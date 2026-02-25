@@ -237,12 +237,15 @@ Deno.serve(async (req) => {
         for (const [key, value] of Object.entries(settings)) {
           await adminClient
             .from("system_settings")
-            .update({ 
-              value: JSON.stringify(value), 
-              updated_at: new Date().toISOString(),
-              updated_by: actorUserId,
-            })
-            .eq("key", key);
+            .upsert(
+              { 
+                key,
+                value: JSON.stringify(value), 
+                updated_at: new Date().toISOString(),
+                updated_by: actorUserId,
+              },
+              { onConflict: "key" }
+            );
         }
 
         await adminClient.from("audit_logs").insert({
