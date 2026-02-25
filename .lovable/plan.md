@@ -1,59 +1,89 @@
 
 
-## Analysis
+## Design System Overhaul: Poppins + Cream/Beige/Deep Ocean
 
-The root cause is in the `update_settings` action of the `admin-operations` edge function (line 238-246). It uses `UPDATE` to save settings, but the `system_settings` table starts empty (no rows). An `UPDATE` on a non-existent row silently does nothing -- the function returns `"Settings updated"` but zero rows are actually written. This is confirmed by the network data: `get_settings` returns `{"settings":{}}`.
+### Current State
 
-The reported "blank screen" is likely a secondary effect of the app reading empty settings on subsequent navigations.
+The project currently uses:
+- **Inter** as body font and **Playfair Display** (serif) for headings -- mixed typography
+- **Golden/Amber** (#D4AF37) as primary color with cream secondary
+- `font-display` class used in ~63 files for headings
+- `btn-gold` class with golden gradient used in ~12 files
+- CSS variables defined in `src/index.css`, font families in `tailwind.config.ts`
 
-## Plan
+### Plan
 
-### 1. Fix the edge function to use UPSERT (single file change)
+The entire rebrand is achievable by editing **only 2 files** -- the design tokens propagate automatically via CSS variables and Tailwind classes.
 
-**File:** `supabase/functions/admin-operations/index.ts`
+---
 
-In the `update_settings` case (lines 234-257), replace the `.update()` call with an upsert pattern:
+#### 1. `src/index.css` -- Replace design tokens and font
+
+- Replace Google Fonts import: swap `Playfair Display + Inter` for `Poppins` with weights 300-700
+- Update comment block to reflect new design system
+- **Light mode `:root`** -- convert all HSL values to the new palette:
+
+| Token | New Value (HSL) | Source |
+|---|---|---|
+| `--background` | `30 23% 92%` | Cream #EEE8DF |
+| `--foreground` | `227 35% 26%` | Deep Ocean #2C365A |
+| `--card` | `30 23% 92%` | Cream #EEE8DF |
+| `--card-foreground` | `227 35% 26%` | Deep Ocean |
+| `--popover` | `0 0% 100%` | White (popovers stay white for contrast) |
+| `--popover-foreground` | `227 35% 26%` | Deep Ocean |
+| `--primary` | `227 35% 26%` | Deep Ocean #2C365A |
+| `--primary-foreground` | `30 23% 92%` | Cream #EEE8DF |
+| `--secondary` | `26 12% 72%` | Beige #C4BCB0 |
+| `--secondary-foreground` | `227 35% 26%` | Deep Ocean |
+| `--muted` | `26 12% 78%` | Lighter Beige |
+| `--muted-foreground` | `227 20% 45%` | Muted Deep Ocean |
+| `--accent` | `26 15% 85%` | Light Beige tint |
+| `--accent-foreground` | `227 35% 26%` | Deep Ocean |
+| `--border` | `26 12% 80%` | Beige-ish border |
+| `--input` | `26 12% 80%` | Same |
+| `--ring` | `227 35% 26%` | Deep Ocean |
+| `--success` | `145 40% 45%` | Soft green |
+| `--warning` | `38 60% 55%` | Soft amber |
+| `--destructive` | `0 55% 55%` | Desaturated red |
+
+- **Sidebar tokens**: background Deep Ocean, foreground Cream, active accent
+- **Gradients**: replace gold gradients with Deep Ocean gradients
+- **Shadows**: replace gold shadow with Deep Ocean shadow
+- **Dark mode**: update similarly with darker Deep Ocean base
+
+- **Body font rule**: change `font-family: 'Inter'` to `font-family: 'Poppins'`
+- **Heading rule**: remove `font-family: 'Playfair Display', serif` -- headings will inherit Poppins, add `font-weight: 600`
+- **`.btn-gold`**: rename conceptually to `.btn-primary` (keep `.btn-gold` as alias for compatibility) -- change gradient to Deep Ocean tones, shadow to Deep Ocean shadow
+
+---
+
+#### 2. `tailwind.config.ts` -- Update font families
 
 ```typescript
-case "update_settings": {
-  const { settings } = params;
-  
-  for (const [key, value] of Object.entries(settings)) {
-    await adminClient
-      .from("system_settings")
-      .upsert(
-        { 
-          key, 
-          value: JSON.stringify(value), 
-          updated_at: new Date().toISOString(),
-          updated_by: actorUserId,
-        },
-        { onConflict: "key" }
-      );
-  }
-
-  // audit log (already exists, keep as-is)
-  ...
-}
+fontFamily: {
+  sans: ['Poppins', 'sans-serif'],
+  display: ['Poppins', 'sans-serif'], // keep class name for compatibility, same font
+},
 ```
 
-### 2. Add a unique constraint on `system_settings.key`
+No other Tailwind changes needed -- all colors already reference CSS variables.
 
-A database migration is needed so that `upsert` with `onConflict: "key"` works:
+---
 
-```sql
-ALTER TABLE public.system_settings
-  ADD CONSTRAINT system_settings_key_unique UNIQUE (key);
-```
+#### 3. What does NOT need changing
 
-### 3. No other changes needed
+- **No component files need editing.** All 63+ files using `font-display` will automatically render Poppins 600 instead of Playfair Display. All files using `btn-gold` will automatically get Deep Ocean styling. All color references like `bg-primary`, `text-foreground`, `bg-card` resolve to CSS variables.
+- No shadcn/ui component changes needed -- they all use the token system.
+- No page-level changes needed.
 
-- The UI code in `AdminSettings.tsx` already has loading states, error toasts, and success toasts -- all working correctly.
-- The `useSystemSettings` hook already has fallback defaults when the table is empty.
-- The `Auth.tsx` page already reads `settings.registration_enabled` and `settings.require_approval` from the hook.
-- Audit logging is already implemented in the edge function.
+---
 
-### Summary
+#### Summary of file changes
 
-Two changes total: one migration (unique constraint) and one line change in the edge function (UPDATE to UPSERT). This ensures settings rows are created on first save and updated on subsequent saves.
+| File | Change |
+|---|---|
+| `src/index.css` | Replace font import, all CSS variable values, gradient/shadow definitions, body/heading font rules |
+| `tailwind.config.ts` | Replace font families (both `sans` and `display` to Poppins) |
+
+Total: **2 files**, zero component changes. The design token architecture ensures global propagation.
 
