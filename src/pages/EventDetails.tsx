@@ -7,6 +7,7 @@ import EventSidebar from "@/components/event/EventSidebar";
 import EventManagement from "@/components/event/EventManagement";
 import CheckinPage from "@/components/event/CheckinPage";
 import EventSettings from "@/components/event/EventSettings";
+import { useProfileGuard } from "@/hooks/useProfileGuard";
 
 const EventDetails = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -15,6 +16,7 @@ const EventDetails = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"convidados" | "checkin" | "configuracoes">("convidados");
   const navigate = useNavigate();
+  const { loading: guardLoading } = useProfileGuard(session?.user ?? null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -55,7 +57,7 @@ const EventDetails = () => {
     return () => subscription.unsubscribe();
   }, [navigate, eventId]);
 
-  if (loading) {
+  if (loading || guardLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

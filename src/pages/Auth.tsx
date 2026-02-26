@@ -40,8 +40,10 @@ const Auth = () => {
         if (profile?.status === "approved") {
           navigate("/dashboard");
         } else if (profile?.status === "pending") {
+          await supabase.auth.signOut();
           setPendingApproval(true);
         } else if (profile?.status === "rejected") {
+          await supabase.auth.signOut();
           setRejected(true);
           setRejectionReason(profile.rejection_reason);
         }

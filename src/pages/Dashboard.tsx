@@ -5,15 +5,16 @@ import { Session, User } from "@supabase/supabase-js";
 import Sidebar from "@/components/dashboard/Sidebar";
 import DashboardContent from "@/components/dashboard/DashboardContent";
 import { Loader2 } from "lucide-react";
+import { useProfileGuard } from "@/hooks/useProfileGuard";
 
 const Dashboard = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { loading: guardLoading } = useProfileGuard(user);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
@@ -25,7 +26,6 @@ const Dashboard = () => {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -39,7 +39,7 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  if (loading) {
+  if (loading || guardLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
