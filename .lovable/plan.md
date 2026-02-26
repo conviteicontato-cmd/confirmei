@@ -1,89 +1,65 @@
 
 
-## Design System Overhaul: Poppins + Cream/Beige/Deep Ocean
+## Analysis
 
-### Current State
+The auth flow in `Auth.tsx` (lines 181-205) already correctly checks profile status after login and blocks pending/rejected users by signing them out. The pending/rejected UI screens are also already implemented.
 
-The project currently uses:
-- **Inter** as body font and **Playfair Display** (serif) for headings -- mixed typography
-- **Golden/Amber** (#D4AF37) as primary color with cream secondary
-- `font-display` class used in ~63 files for headings
-- `btn-gold` class with golden gradient used in ~12 files
-- CSS variables defined in `src/index.css`, font families in `tailwind.config.ts`
+**The real vulnerability**: Protected pages (`Dashboard.tsx`, `EventDetails.tsx`, `Admin.tsx`) only check for an active session -- they do NOT verify profile `status === "approved"`. A user whose email is confirmed gets a valid session from Supabase Auth. Even though `Auth.tsx` calls `signOut()` for pending users, there's a race condition: if the user navigates directly to `/dashboard` (e.g., via the email confirmation redirect URL `emailRedirectTo: window.location.origin`), they bypass the Auth.tsx gate entirely and land on the dashboard with full access.
 
-### Plan
+Additionally, the `useEffect` in `Auth.tsx` (lines 31-49) that runs on page load checks profile status but only sets UI state -- it doesn't sign out the user if they're pending.
 
-The entire rebrand is achievable by editing **only 2 files** -- the design tokens propagate automatically via CSS variables and Tailwind classes.
+## Plan
 
----
+### 1. Create a reusable `useProfileGuard` hook (new file)
 
-#### 1. `src/index.css` -- Replace design tokens and font
+**File:** `src/hooks/useProfileGuard.ts`
 
-- Replace Google Fonts import: swap `Playfair Display + Inter` for `Poppins` with weights 300-700
-- Update comment block to reflect new design system
-- **Light mode `:root`** -- convert all HSL values to the new palette:
+This hook will:
+- Accept the current user
+- Query the `profiles` table for `status`
+- Return `{ status, loading }` where status is `"approved" | "pending" | "rejected" | null`
+- Used by all protected pages to gate access
 
-| Token | New Value (HSL) | Source |
-|---|---|---|
-| `--background` | `30 23% 92%` | Cream #EEE8DF |
-| `--foreground` | `227 35% 26%` | Deep Ocean #2C365A |
-| `--card` | `30 23% 92%` | Cream #EEE8DF |
-| `--card-foreground` | `227 35% 26%` | Deep Ocean |
-| `--popover` | `0 0% 100%` | White (popovers stay white for contrast) |
-| `--popover-foreground` | `227 35% 26%` | Deep Ocean |
-| `--primary` | `227 35% 26%` | Deep Ocean #2C365A |
-| `--primary-foreground` | `30 23% 92%` | Cream #EEE8DF |
-| `--secondary` | `26 12% 72%` | Beige #C4BCB0 |
-| `--secondary-foreground` | `227 35% 26%` | Deep Ocean |
-| `--muted` | `26 12% 78%` | Lighter Beige |
-| `--muted-foreground` | `227 20% 45%` | Muted Deep Ocean |
-| `--accent` | `26 15% 85%` | Light Beige tint |
-| `--accent-foreground` | `227 35% 26%` | Deep Ocean |
-| `--border` | `26 12% 80%` | Beige-ish border |
-| `--input` | `26 12% 80%` | Same |
-| `--ring` | `227 35% 26%` | Deep Ocean |
-| `--success` | `145 40% 45%` | Soft green |
-| `--warning` | `38 60% 55%` | Soft amber |
-| `--destructive` | `0 55% 55%` | Desaturated red |
+### 2. Update `Auth.tsx` -- fix the initial session check
 
-- **Sidebar tokens**: background Deep Ocean, foreground Cream, active accent
-- **Gradients**: replace gold gradients with Deep Ocean gradients
-- **Shadows**: replace gold shadow with Deep Ocean shadow
-- **Dark mode**: update similarly with darker Deep Ocean base
+**File:** `src/pages/Auth.tsx` (lines 31-49)
 
-- **Body font rule**: change `font-family: 'Inter'` to `font-family: 'Poppins'`
-- **Heading rule**: remove `font-family: 'Playfair Display', serif` -- headings will inherit Poppins, add `font-weight: 600`
-- **`.btn-gold`**: rename conceptually to `.btn-primary` (keep `.btn-gold` as alias for compatibility) -- change gradient to Deep Ocean tones, shadow to Deep Ocean shadow
+The existing `useEffect` checks profile status on load but doesn't sign out pending/rejected users who arrive via email confirmation redirect. Fix: add `await supabase.auth.signOut()` for pending and rejected cases in the initial session check, matching what the login handler already does.
+
+### 3. Update `Dashboard.tsx` -- add profile status gate
+
+**File:** `src/pages/Dashboard.tsx`
+
+After session is confirmed, check profile status using `useProfileGuard`. If status is not `"approved"`:
+- Sign the user out
+- Redirect to `/auth`
+
+This adds a server-side truth check even if someone navigates directly to `/dashboard`.
+
+### 4. Update `EventDetails.tsx` -- add same gate
+
+**File:** `src/pages/EventDetails.tsx`
+
+Same pattern: check profile status, redirect if not approved.
+
+### 5. No database changes needed
+
+The `profiles` table already has a `status` column with values `pending`, `approved`, `rejected`. The admin approval/rejection actions (`approve_user`, `reject_user`) in the edge function already work correctly. No new columns or migrations are required.
+
+### 6. No email changes
+
+Automated approval emails would require a third-party email service (non-auth emails are not supported by the platform's built-in email system). The admin can manually notify users, or this can be added later with an external integration.
 
 ---
 
-#### 2. `tailwind.config.ts` -- Update font families
-
-```typescript
-fontFamily: {
-  sans: ['Poppins', 'sans-serif'],
-  display: ['Poppins', 'sans-serif'], // keep class name for compatibility, same font
-},
-```
-
-No other Tailwind changes needed -- all colors already reference CSS variables.
-
----
-
-#### 3. What does NOT need changing
-
-- **No component files need editing.** All 63+ files using `font-display` will automatically render Poppins 600 instead of Playfair Display. All files using `btn-gold` will automatically get Deep Ocean styling. All color references like `bg-primary`, `text-foreground`, `bg-card` resolve to CSS variables.
-- No shadcn/ui component changes needed -- they all use the token system.
-- No page-level changes needed.
-
----
-
-#### Summary of file changes
+### Summary
 
 | File | Change |
 |---|---|
-| `src/index.css` | Replace font import, all CSS variable values, gradient/shadow definitions, body/heading font rules |
-| `tailwind.config.ts` | Replace font families (both `sans` and `display` to Poppins) |
+| `src/hooks/useProfileGuard.ts` | New hook: queries profile status for authenticated user |
+| `src/pages/Auth.tsx` | Fix initial session check to sign out non-approved users |
+| `src/pages/Dashboard.tsx` | Add profile status gate before rendering |
+| `src/pages/EventDetails.tsx` | Add profile status gate before rendering |
 
-Total: **2 files**, zero component changes. The design token architecture ensures global propagation.
+The core fix ensures that every protected page verifies `profile.status === "approved"` server-side, not just the login form. Users with confirmed emails but pending approval will be signed out and redirected to the auth page with the appropriate message.
 
