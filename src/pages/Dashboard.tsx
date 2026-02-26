@@ -4,15 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import Sidebar from "@/components/dashboard/Sidebar";
 import DashboardContent from "@/components/dashboard/DashboardContent";
-import { Loader2 } from "lucide-react";
+import { Loader2, Clock, XCircle } from "lucide-react";
 import { useProfileGuard } from "@/hooks/useProfileGuard";
+import { Button } from "@/components/ui/button";
 
 const Dashboard = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { loading: guardLoading } = useProfileGuard(user);
+  const { status: profileStatus, loading: guardLoading } = useProfileGuard(user);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -49,6 +50,68 @@ const Dashboard = () => {
 
   if (!session) {
     return null;
+  }
+
+  // Block non-approved users with a friendly screen (no sign-out)
+  if (profileStatus === "pending") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md text-center animate-slide-up">
+          <div className="card-elegant p-8 space-y-6">
+            <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
+              <Clock className="h-8 w-8 text-yellow-600" />
+            </div>
+            <h1 className="text-2xl font-display font-bold text-foreground">
+              Aguardando Aprovação
+            </h1>
+            <p className="text-muted-foreground">
+              Seu cadastro foi recebido e está aguardando aprovação do administrador.
+              Você será notificado quando o acesso for liberado.
+            </p>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate("/auth");
+              }}
+              className="w-full"
+            >
+              Sair
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (profileStatus === "rejected") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md text-center animate-slide-up">
+          <div className="card-elegant p-8 space-y-6">
+            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <XCircle className="h-8 w-8 text-red-600" />
+            </div>
+            <h1 className="text-2xl font-display font-bold text-foreground">
+              Cadastro Não Aprovado
+            </h1>
+            <p className="text-muted-foreground">
+              Infelizmente seu cadastro não foi aprovado pelo administrador.
+            </p>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate("/auth");
+              }}
+              className="w-full"
+            >
+              Sair
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

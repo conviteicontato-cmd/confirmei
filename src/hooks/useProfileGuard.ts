@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -8,7 +7,7 @@ type ProfileStatus = "approved" | "pending" | "rejected" | null;
 export const useProfileGuard = (user: User | null) => {
   const [status, setStatus] = useState<ProfileStatus>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -17,6 +16,22 @@ export const useProfileGuard = (user: User | null) => {
     }
 
     const checkStatus = async () => {
+      // Check admin role first - admins always bypass approval
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "super_admin")
+        .maybeSingle();
+
+      if (roleData) {
+        setIsAdmin(true);
+        setStatus("approved");
+        setLoading(false);
+        return;
+      }
+
+      // For non-admins, check profile status
       const { data: profile } = await supabase
         .from("profiles")
         .select("status")
@@ -25,17 +40,11 @@ export const useProfileGuard = (user: User | null) => {
 
       const profileStatus = (profile?.status as ProfileStatus) ?? "pending";
       setStatus(profileStatus);
-
-      if (profileStatus !== "approved") {
-        await supabase.auth.signOut();
-        navigate("/auth");
-      }
-
       setLoading(false);
     };
 
     checkStatus();
-  }, [user, navigate]);
+  }, [user]);
 
-  return { status, loading };
+  return { status, loading, isAdmin };
 };
