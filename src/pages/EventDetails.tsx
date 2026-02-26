@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
-import { Loader2 } from "lucide-react";
+import { Loader2, Clock } from "lucide-react";
 import EventSidebar from "@/components/event/EventSidebar";
 import EventManagement from "@/components/event/EventManagement";
 import CheckinPage from "@/components/event/CheckinPage";
 import EventSettings from "@/components/event/EventSettings";
 import { useProfileGuard } from "@/hooks/useProfileGuard";
+import { Button } from "@/components/ui/button";
 
 const EventDetails = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -16,7 +17,7 @@ const EventDetails = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"convidados" | "checkin" | "configuracoes">("convidados");
   const navigate = useNavigate();
-  const { loading: guardLoading } = useProfileGuard(session?.user ?? null);
+  const { status: profileStatus, loading: guardLoading } = useProfileGuard(session?.user ?? null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -67,6 +68,36 @@ const EventDetails = () => {
 
   if (!session || !eventId) {
     return null;
+  }
+
+  if (profileStatus !== "approved") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md text-center animate-slide-up">
+          <div className="card-elegant p-8 space-y-6">
+            <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
+              <Clock className="h-8 w-8 text-yellow-600" />
+            </div>
+            <h1 className="text-2xl font-display font-bold text-foreground">
+              Aguardando Aprovação
+            </h1>
+            <p className="text-muted-foreground">
+              Seu cadastro está aguardando aprovação do administrador.
+            </p>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate("/auth");
+              }}
+              className="w-full"
+            >
+              Sair
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handleBackFromSettings = () => {

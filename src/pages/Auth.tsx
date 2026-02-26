@@ -39,13 +39,10 @@ const Auth = () => {
 
         if (profile?.status === "approved") {
           navigate("/dashboard");
-        } else if (profile?.status === "pending") {
-          await supabase.auth.signOut();
-          setPendingApproval(true);
-        } else if (profile?.status === "rejected") {
-          await supabase.auth.signOut();
-          setRejected(true);
-          setRejectionReason(profile.rejection_reason);
+        } else {
+          // Non-approved users: redirect to dashboard which shows the blocking screen
+          // Session stays active so the user doesn't get stuck in a loop
+          navigate("/dashboard");
         }
       }
     });
