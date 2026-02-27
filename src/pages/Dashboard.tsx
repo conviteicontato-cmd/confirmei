@@ -20,7 +20,6 @@ const Dashboard = () => {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
         if (!session) {
           navigate("/auth");
         }
@@ -31,7 +30,6 @@ const Dashboard = () => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      
       if (!session) {
         navigate("/auth");
       }
@@ -48,11 +46,8 @@ const Dashboard = () => {
     );
   }
 
-  if (!session) {
-    return null;
-  }
+  if (!session) return null;
 
-  // Block non-approved users with a friendly screen (no sign-out)
   if (profileStatus === "pending") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -66,7 +61,6 @@ const Dashboard = () => {
             </h1>
             <p className="text-muted-foreground">
               Seu cadastro foi recebido e está aguardando aprovação do administrador.
-              Você será notificado quando o acesso for liberado.
             </p>
             <Button
               variant="outline"
@@ -96,7 +90,7 @@ const Dashboard = () => {
               Cadastro Não Aprovado
             </h1>
             <p className="text-muted-foreground">
-              Infelizmente seu cadastro não foi aprovado pelo administrador.
+              Seu cadastro foi rejeitado. Entre em contato com o suporte.
             </p>
             <Button
               variant="outline"

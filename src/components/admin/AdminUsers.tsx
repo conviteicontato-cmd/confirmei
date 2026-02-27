@@ -46,6 +46,7 @@ import { Textarea } from "@/components/ui/textarea";
 import UserDetailModal from "./UserDetailModal";
 import AdjustLimitModal from "./AdjustLimitModal";
 import AdjustCreditsModal from "./AdjustCreditsModal";
+import CreateUserModal from "./CreateUserModal";
 
 interface UserProfile {
   id: string;
@@ -81,6 +82,7 @@ const AdminUsers = () => {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [adjustLimitOpen, setAdjustLimitOpen] = useState(false);
   const [selectedUserForLimit, setSelectedUserForLimit] = useState<UserProfile | null>(null);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
   const { toast } = useToast();
   const { settings } = useSystemSettings();
 
@@ -241,13 +243,18 @@ const AdminUsers = () => {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground">
-          Gestão de Usuários
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Aprovar, rejeitar e gerenciar usuários do sistema
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground">
+            Gestão de Usuários
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Aprovar, rejeitar e gerenciar usuários do sistema
+          </p>
+        </div>
+        <Button onClick={() => setCreateUserOpen(true)}>
+          + Criar Usuário
+        </Button>
       </div>
 
       {/* Filters */}
@@ -493,6 +500,13 @@ const AdminUsers = () => {
         onOpenChange={setAdjustCreditsOpen}
         user={selectedUserForCredits}
         onCreditsUpdated={fetchUsers}
+      />
+
+      {/* Create User Modal */}
+      <CreateUserModal
+        open={createUserOpen}
+        onOpenChange={setCreateUserOpen}
+        onUserCreated={fetchUsers}
       />
     </div>
   );

@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { LayoutDashboard, Calendar, LogOut, Menu, Shield } from "lucide-react";
+import { LayoutDashboard, Calendar, LogOut, Menu, Shield, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAdminRole } from "@/hooks/useAdminRole";
+import ChangePasswordModal from "./ChangePasswordModal";
 
 interface SidebarProps {
   user: User | null;
@@ -18,10 +19,12 @@ const SidebarContent = ({
   activeSection, 
   onNavigate,
   isSuperAdmin,
+  onChangePassword,
 }: { 
   activeSection: string; 
   onNavigate: (path: string) => void;
   isSuperAdmin: boolean;
+  onChangePassword?: () => void;
 }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -75,7 +78,14 @@ const SidebarContent = ({
         )}
       </nav>
 
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border space-y-1">
+        <button
+          onClick={() => onChangePassword?.()}
+          className="nav-item w-full text-muted-foreground"
+        >
+          <KeyRound className="h-5 w-5" />
+          <span className="font-medium">Alterar Senha</span>
+        </button>
         <button
           onClick={handleLogout}
           className="nav-item w-full text-muted-foreground hover:text-destructive"
@@ -90,12 +100,18 @@ const SidebarContent = ({
 
 const Sidebar = ({ user, activeSection = "painel" }: SidebarProps) => {
   const [open, setOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const navigate = useNavigate();
   const { isSuperAdmin } = useAdminRole(user);
 
   const handleNavigate = (path: string) => {
     navigate(path);
     setOpen(false);
+  };
+
+  const handleChangePassword = () => {
+    setOpen(false);
+    setChangePasswordOpen(true);
   };
 
   return (
@@ -117,6 +133,7 @@ const Sidebar = ({ user, activeSection = "painel" }: SidebarProps) => {
                 activeSection={activeSection} 
                 onNavigate={handleNavigate}
                 isSuperAdmin={isSuperAdmin}
+                onChangePassword={handleChangePassword}
               />
             </SheetContent>
           </Sheet>
@@ -129,8 +146,11 @@ const Sidebar = ({ user, activeSection = "painel" }: SidebarProps) => {
           activeSection={activeSection} 
           onNavigate={handleNavigate}
           isSuperAdmin={isSuperAdmin}
+          onChangePassword={handleChangePassword}
         />
       </aside>
+
+      <ChangePasswordModal open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </>
   );
 };
