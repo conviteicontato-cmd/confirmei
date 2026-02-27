@@ -768,6 +768,56 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "create_user": {
+        const { email, password, fullName, autoApprove } = params;
+
+        if (!email || !password || !fullName) {
+          return new Response(JSON.stringify({ error: "Missing required fields" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Create user via admin API (auto-confirms email)
+        const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: fullName },
+        });
+
+        if (createError) {
+          return new Response(JSON.stringify({ error: createError.message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Update profile status if auto-approve
+        if (autoApprove && newUser.user) {
+          await adminClient
+            .from("profiles")
+            .update({
+              status: "approved",
+              approved_at: new Date().toISOString(),
+              approved_by: actorUserId,
+            })
+            .eq("user_id", newUser.user.id);
+        }
+
+        // Log audit event
+        await adminClient.from("audit_logs").insert({
+          user_id: actorUserId,
+          action: "create_user",
+          entity_type: "profile",
+          entity_id: newUser.user?.id,
+          details: { email, full_name: fullName, auto_approve: autoApprove },
+        });
+
+        result = { success: true, message: "User created" };
+        break;
+      }
+
       case "delete_event": {
         const { eventId } = params;
 

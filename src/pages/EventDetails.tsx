@@ -79,10 +79,12 @@ const EventDetails = () => {
               <Clock className="h-8 w-8 text-yellow-600" />
             </div>
             <h1 className="text-2xl font-display font-bold text-foreground">
-              Aguardando Aprovação
+              {profileStatus === "rejected" ? "Cadastro Não Aprovado" : "Aguardando Aprovação"}
             </h1>
             <p className="text-muted-foreground">
-              Seu cadastro está aguardando aprovação do administrador.
+              {profileStatus === "rejected"
+                ? "Seu cadastro foi rejeitado. Entre em contato com o suporte."
+                : "Seu cadastro está aguardando aprovação do administrador."}
             </p>
             <Button
               variant="outline"

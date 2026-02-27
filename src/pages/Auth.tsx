@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Mail, Lock, User, Loader2, Clock, XCircle, ArrowLeft, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Loader2, ArrowLeft } from "lucide-react";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 
 type AuthMode = "login" | "signup" | "forgot_password";
@@ -17,12 +17,6 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [pendingApproval, setPendingApproval] = useState(false);
-  const [rejected, setRejected] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
-  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
-  const [unconfirmedEmail, setUnconfirmedEmail] = useState("");
-  const [resendingEmail, setResendingEmail] = useState(false);
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -31,47 +25,11 @@ const Auth = () => {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("status, rejection_reason")
-          .eq("user_id", session.user.id)
-          .single();
-
-        if (profile?.status === "approved") {
-          navigate("/dashboard");
-        } else {
-          // Non-approved users: redirect to dashboard which shows the blocking screen
-          // Session stays active so the user doesn't get stuck in a loop
-          navigate("/dashboard");
-        }
+        // User has session — redirect to dashboard, guard there handles approval
+        navigate("/dashboard");
       }
     });
   }, [navigate]);
-
-  const handleResendConfirmation = async () => {
-    if (!unconfirmedEmail) return;
-    setResendingEmail(true);
-    try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: unconfirmedEmail,
-      });
-      if (error) throw error;
-      toast({
-        title: "E-mail reenviado!",
-        description: "Verifique sua caixa de entrada e spam.",
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Erro ao reenviar e-mail.";
-      toast({
-        title: "Erro",
-        description: message,
-        variant: "destructive",
-      });
-    } finally {
-      setResendingEmail(false);
-    }
-  };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,11 +47,7 @@ const Auth = () => {
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro ao enviar e-mail.";
-      toast({
-        title: "Erro",
-        description: message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -102,9 +56,6 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setPendingApproval(false);
-    setRejected(false);
-    setEmailNotConfirmed(false);
 
     try {
       if (mode === "signup") {
@@ -122,10 +73,7 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              full_name: fullName,
-            },
+            data: { full_name: fullName },
           },
         });
 
@@ -139,19 +87,14 @@ const Auth = () => {
           } else {
             throw error;
           }
-        } else {
-          if (settings.require_approval) {
-            toast({
-              title: "Conta criada!",
-              description: "Verifique seu e-mail e aguarde a aprovação do administrador.",
-            });
-            setPendingApproval(true);
-          } else {
-            toast({
-              title: "Conta criada!",
-              description: "Verifique seu e-mail para confirmar o cadastro.",
-            });
-          }
+        } else if (data.user) {
+          // Auto-confirmed, session created — redirect to dashboard
+          // The dashboard guard will show "pending" screen if not approved
+          toast({
+            title: "Conta criada!",
+            description: "Seu cadastro está aguardando aprovação do administrador.",
+          });
+          navigate("/dashboard");
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -160,128 +103,27 @@ const Auth = () => {
         });
 
         if (error) {
-          if (error.message.includes("Email not confirmed")) {
-            setEmailNotConfirmed(true);
-            setUnconfirmedEmail(email);
-            toast({
-              title: "E-mail não confirmado",
-              description: "Confirme seu e-mail antes de fazer login. Use o botão abaixo para reenviar.",
-              variant: "destructive",
-            });
-          } else if (error.message.includes("Invalid login credentials")) {
+          if (error.message.includes("Invalid login credentials")) {
             toast({
               title: "Credenciais inválidas",
-              description: "E-mail ou senha incorretos. Verifique seus dados e tente novamente.",
+              description: "E-mail ou senha incorretos.",
               variant: "destructive",
             });
           } else {
             throw error;
           }
         } else if (data.user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("status, rejection_reason")
-            .eq("user_id", data.user.id)
-            .single();
-
-          if (profile?.status === "pending") {
-            setPendingApproval(true);
-            await supabase.auth.signOut();
-            toast({
-              title: "Aguardando aprovação",
-              description: "Seu cadastro está sendo analisado pelo administrador.",
-            });
-          } else if (profile?.status === "rejected") {
-            setRejected(true);
-            setRejectionReason(profile.rejection_reason);
-            await supabase.auth.signOut();
-          } else {
-            toast({
-              title: "Login realizado!",
-              description: "Bem-vindo de volta!",
-            });
-            navigate("/dashboard");
-          }
+          // Session created — redirect to dashboard, guard handles approval check
+          navigate("/dashboard");
         }
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Algo deu errado. Tente novamente.";
-      toast({
-        title: "Erro",
-        description: message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
-
-  if (pendingApproval) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md text-center animate-slide-up">
-          <div className="card-elegant p-8 space-y-6">
-            <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
-              <Clock className="h-8 w-8 text-yellow-600" />
-            </div>
-            <h1 className="text-2xl font-display font-bold text-foreground">
-              Aguardando Aprovação
-            </h1>
-            <p className="text-muted-foreground">
-              Seu cadastro foi recebido e está sendo analisado pelo administrador.
-              Você receberá uma notificação quando for aprovado.
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setPendingApproval(false);
-                setMode("login");
-              }}
-              className="w-full"
-            >
-              Voltar ao Login
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (rejected) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md text-center animate-slide-up">
-          <div className="card-elegant p-8 space-y-6">
-            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-              <XCircle className="h-8 w-8 text-red-600" />
-            </div>
-            <h1 className="text-2xl font-display font-bold text-foreground">
-              Cadastro Não Aprovado
-            </h1>
-            <p className="text-muted-foreground">
-              Infelizmente seu cadastro não foi aprovado pelo administrador.
-            </p>
-            {rejectionReason && (
-              <div className="bg-muted rounded-lg p-4 text-left">
-                <p className="text-sm font-medium text-foreground">Motivo:</p>
-                <p className="text-sm text-muted-foreground mt-1">{rejectionReason}</p>
-              </div>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => {
-                setRejected(false);
-                setMode("login");
-              }}
-              className="w-full"
-            >
-              Voltar ao Login
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Forgot password mode
   if (mode === "forgot_password") {
@@ -338,7 +180,6 @@ const Auth = () => {
                     />
                   </div>
                 </div>
-
                 <Button
                   type="submit"
                   disabled={loading}
@@ -350,7 +191,6 @@ const Auth = () => {
                     "Enviar link de redefinição"
                   )}
                 </Button>
-
                 <Button
                   type="button"
                   variant="ghost"
@@ -448,38 +288,10 @@ const Auth = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
-
-            {/* Resend confirmation email button */}
-            {emailNotConfirmed && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
-                <p className="text-sm text-yellow-800">
-                  Seu e-mail ainda não foi confirmado. Clique abaixo para reenviar o e-mail de confirmação.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResendConfirmation}
-                  disabled={resendingEmail}
-                  className="w-full border-yellow-300 text-yellow-800 hover:bg-yellow-100"
-                >
-                  {resendingEmail ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                  )}
-                  Reenviar e-mail de confirmação
-                </Button>
-              </div>
-            )}
 
             <Button
               type="submit"
@@ -506,10 +318,7 @@ const Auth = () => {
         <p className="text-center mt-6 text-muted-foreground">
           {mode === "login" ? "Não tem conta? " : "Já tem conta? "}
           <button
-            onClick={() => {
-              setMode(mode === "login" ? "signup" : "login");
-              setEmailNotConfirmed(false);
-            }}
+            onClick={() => setMode(mode === "login" ? "signup" : "login")}
             className="text-primary hover:underline font-medium"
           >
             {mode === "login" ? "Criar conta" : "Fazer login"}
