@@ -325,7 +325,47 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "sync_users":
       case "get_all_users": {
+        // --- Backfill: sync auth users missing from profiles ---
+        const { data: authListData } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+        const authUsers = authListData?.users || [];
+
+        const { data: existingProfiles } = await adminClient
+          .from("profiles")
+          .select("user_id");
+
+        const existingUserIds = new Set(existingProfiles?.map((p) => p.user_id) || []);
+
+        const missingUsers = authUsers.filter((u) => !existingUserIds.has(u.id));
+
+        if (missingUsers.length > 0) {
+          const newProfiles = missingUsers.map((u) => ({
+            user_id: u.id,
+            email: u.email || "",
+            full_name: u.user_metadata?.full_name || u.email || "Sem nome",
+            status: "pending",
+            events_contracted: 0,
+            events_used: 0,
+          }));
+
+          const { error: insertError } = await adminClient
+            .from("profiles")
+            .insert(newProfiles);
+
+          if (insertError) {
+            console.error("Error backfilling profiles:", insertError);
+          } else {
+            console.log(`Backfilled ${missingUsers.length} missing profiles`);
+          }
+        }
+
+        if (action === "sync_users") {
+          result = { success: true, synced: missingUsers.length };
+          break;
+        }
+
+        // --- Now fetch all profiles ---
         const { data: profiles, error } = await adminClient
           .from("profiles")
           .select("*")
@@ -343,7 +383,7 @@ Deno.serve(async (req) => {
         const { data: events } = await adminClient
           .from("events")
           .select("user_id")
-          .in("user_id", userIds);
+          .in("user_id", userIds.length > 0 ? userIds : ["__none__"]);
 
         const eventCounts = userIds.reduce((acc, id) => {
           acc[id] = events?.filter((e) => e.user_id === id).length || 0;
