@@ -15,6 +15,8 @@ export const useProfileGuard = (user: User | null) => {
       return;
     }
 
+    setLoading(true);
+
     const checkStatus = async () => {
       // Check admin role first - admins always bypass approval
       const { data: roleData } = await supabase

@@ -14,6 +14,9 @@ export function useAdminRole(user: User | null) {
         return;
       }
 
+      // Critical: set loading=true when user changes to avoid flash of "Acesso Negado"
+      setLoading(true);
+
       try {
         const { data, error } = await supabase
           .from("user_roles")
