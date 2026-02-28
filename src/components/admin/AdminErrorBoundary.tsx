@@ -15,11 +15,28 @@ class AdminErrorBoundary extends Component<Props, State> {
   public state: State = { hasError: false, error: null };
 
   public static getDerivedStateFromError(error: Error): State {
+    // Ignore benign DOM errors caused by browser extensions (Grammarly, translators, etc.)
+    const benignMessages = [
+      "removeChild",
+      "insertBefore",
+      "appendChild",
+      "not a child of this node",
+    ];
+    const isBenign = benignMessages.some((msg) =>
+      error.message?.toLowerCase().includes(msg.toLowerCase())
+    );
+    if (isBenign) {
+      console.warn("Benign DOM error ignored by ErrorBoundary:", error.message);
+      return { hasError: false, error: null };
+    }
     return { hasError: true, error };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("Admin Error Boundary caught:", error, errorInfo);
+    // Only log non-benign errors
+    if (this.state.hasError) {
+      console.error("Admin Error Boundary caught:", error, errorInfo);
+    }
   }
 
   public render() {
