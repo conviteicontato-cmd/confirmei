@@ -10,6 +10,7 @@ import AdminUsers from "@/components/admin/AdminUsers";
 import AdminEvents from "@/components/admin/AdminEvents";
 import AdminAuditLogs from "@/components/admin/AdminAuditLogs";
 import AdminSettings from "@/components/admin/AdminSettings";
+import AdminErrorBoundary from "@/components/admin/AdminErrorBoundary";
 
 type AdminTab = "dashboard" | "users" | "events" | "audit" | "settings";
 
@@ -94,16 +95,18 @@ const Admin = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-background">
-      <AdminSidebar 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
-        user={user}
-      />
-      <main className="flex-1 overflow-auto pt-16 lg:pt-0">
-        {renderContent()}
-      </main>
-    </div>
+    <AdminErrorBoundary>
+      <div className="min-h-screen flex flex-col lg:flex-row bg-background">
+        <AdminSidebar 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab} 
+          user={user}
+        />
+        <main className="flex-1 overflow-auto pt-16 lg:pt-0">
+          {renderContent()}
+        </main>
+      </div>
+    </AdminErrorBoundary>
   );
 };
 
