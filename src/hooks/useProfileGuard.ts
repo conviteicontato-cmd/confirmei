@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -8,45 +8,77 @@ export const useProfileGuard = (user: User | null) => {
   const [status, setStatus] = useState<ProfileStatus>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const lastCheckedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!user) {
+    const userId = user?.id ?? null;
+    let cancelled = false;
+
+    const checkStatus = async (targetUserId: string) => {
+      try {
+        const { data: roleData, error: roleError } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", targetUserId)
+          .eq("role", "super_admin")
+          .maybeSingle();
+
+        if (roleError) throw roleError;
+
+        if (roleData) {
+          if (!cancelled) {
+            setIsAdmin(true);
+            setStatus("approved");
+          }
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("status")
+          .eq("user_id", targetUserId)
+          .maybeSingle();
+
+        if (profileError && profileError.code !== "PGRST116") throw profileError;
+
+        const profileStatus = (profile?.status as ProfileStatus) ?? "pending";
+        if (!cancelled) {
+          setIsAdmin(false);
+          setStatus(profileStatus);
+        }
+      } catch (err) {
+        console.error("Error checking profile guard:", err);
+        if (!cancelled) {
+          setIsAdmin(false);
+          setStatus("pending");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    if (!userId) {
+      lastCheckedUserIdRef.current = null;
+      setStatus(null);
+      setIsAdmin(false);
       setLoading(false);
       return;
     }
 
+    if (lastCheckedUserIdRef.current === userId) {
+      return;
+    }
+
+    lastCheckedUserIdRef.current = userId;
     setLoading(true);
+    checkStatus(userId);
 
-    const checkStatus = async () => {
-      // Check admin role first - admins always bypass approval
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "super_admin")
-        .maybeSingle();
-
-      if (roleData) {
-        setIsAdmin(true);
-        setStatus("approved");
-        setLoading(false);
-        return;
-      }
-
-      // For non-admins, check profile status
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("status")
-        .eq("user_id", user.id)
-        .single();
-
-      const profileStatus = (profile?.status as ProfileStatus) ?? "pending";
-      setStatus(profileStatus);
-      setLoading(false);
+    return () => {
+      cancelled = true;
     };
-
-    checkStatus();
-  }, [user]);
+  }, [user?.id]);
 
   return { status, loading, isAdmin };
 };

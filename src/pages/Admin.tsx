@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { Loader2, Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminUsers from "@/components/admin/AdminUsers";
@@ -14,6 +16,19 @@ import AdminErrorBoundary from "@/components/admin/AdminErrorBoundary";
 
 type AdminTab = "dashboard" | "users" | "events" | "audit" | "settings";
 
+const AdminContentSkeleton = () => (
+  <div className="p-6 lg:p-8 space-y-6">
+    <Skeleton className="h-8 w-64" />
+    <Skeleton className="h-4 w-96 max-w-full" />
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <Skeleton className="h-28 w-full" />
+      <Skeleton className="h-28 w-full" />
+      <Skeleton className="h-28 w-full" />
+    </div>
+    <Skeleton className="h-80 w-full" />
+  </div>
+);
+
 const Admin = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -23,61 +38,76 @@ const Admin = () => {
   const { isSuperAdmin, loading: roleLoading } = useAdminRole(user);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (!session) {
-          navigate("/auth");
-        }
-      }
-    );
+    let mounted = true;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setAuthLoading(false);
-      
-      if (!session) {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted) return;
+
+      setSession((prev) => {
+        const prevUserId = prev?.user?.id;
+        const nextUserId = nextSession?.user?.id;
+        if (prevUserId === nextUserId && !!prev?.access_token && !!nextSession?.access_token) {
+          return prev;
+        }
+        return nextSession;
+      });
+
+      setUser((prev) => {
+        const nextUser = nextSession?.user ?? null;
+        if (prev?.id === nextUser?.id) return prev;
+        return nextUser;
+      });
+
+      if (!nextSession) {
         navigate("/auth");
       }
     });
 
-    return () => subscription.unsubscribe();
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: initialSession } }) => {
+        if (!mounted) return;
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        setAuthLoading(false);
+
+        if (!initialSession) {
+          navigate("/auth");
+        }
+      })
+      .catch((error) => {
+        console.error("Error loading admin session:", error);
+        if (!mounted) return;
+        setAuthLoading(false);
+        navigate("/auth");
+      });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
-  if (authLoading || roleLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!session) {
-    return null;
-  }
-
-  if (!isSuperAdmin) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-        <Shield className="h-16 w-16 text-muted-foreground mb-4" />
-        <h1 className="text-2xl font-bold text-foreground mb-2">Acesso Negado</h1>
-        <p className="text-muted-foreground text-center mb-6">
-          Você não tem permissão para acessar esta área.
-        </p>
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="btn-gold px-6 py-2 rounded-lg"
-        >
-          Voltar ao Dashboard
-        </button>
-      </div>
-    );
-  }
-
   const renderContent = () => {
+    if (roleLoading) {
+      return <AdminContentSkeleton />;
+    }
+
+    if (!isSuperAdmin) {
+      return (
+        <div className="min-h-[60vh] flex flex-col items-center justify-center bg-background p-4">
+          <Shield className="h-16 w-16 text-muted-foreground mb-4" />
+          <h1 className="text-2xl font-bold text-foreground mb-2">Acesso Negado</h1>
+          <p className="text-muted-foreground text-center mb-6">
+            Você não tem permissão para acessar esta área.
+          </p>
+          <Button onClick={() => navigate("/dashboard")}>Voltar ao Dashboard</Button>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case "dashboard":
         return <AdminDashboard onTabChange={setActiveTab} />;
@@ -94,15 +124,25 @@ const Admin = () => {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
   return (
     <AdminErrorBoundary>
       <div className="min-h-screen flex flex-col lg:flex-row bg-background">
-        <AdminSidebar 
-          activeTab={activeTab} 
-          onTabChange={setActiveTab} 
-          user={user}
-        />
-        <main className="flex-1 overflow-auto pt-16 lg:pt-0">
+        {(isSuperAdmin || roleLoading) && (
+          <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} user={user} />
+        )}
+        <main className={`flex-1 overflow-auto ${isSuperAdmin || roleLoading ? "pt-16 lg:pt-0" : ""}`}>
           {renderContent()}
         </main>
       </div>

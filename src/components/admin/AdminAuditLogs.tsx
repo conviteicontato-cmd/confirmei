@@ -126,7 +126,8 @@ const AdminAuditLogs = () => {
     link.setAttribute("download", `audit_logs_${format(new Date(), "yyyy-MM-dd")}.csv`);
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    if (link.parentNode) link.parentNode.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const getActionBadge = (action: string) => {

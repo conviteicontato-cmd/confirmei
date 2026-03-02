@@ -325,9 +325,8 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case "sync_users":
-      case "get_all_users": {
-        // --- Backfill: sync auth users missing from profiles ---
+      case "sync_users": {
+        // Sincronização executada apenas sob demanda (manual)
         const { data: authListData } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
         const authUsers = authListData?.users || [];
 
@@ -336,7 +335,6 @@ Deno.serve(async (req) => {
           .select("user_id");
 
         const existingUserIds = new Set(existingProfiles?.map((p) => p.user_id) || []);
-
         const missingUsers = authUsers.filter((u) => !existingUserIds.has(u.id));
 
         if (missingUsers.length > 0) {
@@ -360,12 +358,12 @@ Deno.serve(async (req) => {
           }
         }
 
-        if (action === "sync_users") {
-          result = { success: true, synced: missingUsers.length };
-          break;
-        }
+        result = { success: true, synced: missingUsers.length };
+        break;
+      }
 
-        // --- Now fetch all profiles ---
+      case "get_all_users": {
+        // Apenas leitura para evitar loops de escrita/refetch automático
         const { data: profiles, error } = await adminClient
           .from("profiles")
           .select("*")
@@ -396,7 +394,7 @@ Deno.serve(async (req) => {
           const eventsContracted = p.events_contracted || 0;
           const eventsUsed = p.events_used || 0;
           const availableEvents = isSuperAdmin ? -1 : Math.max(0, eventsContracted - eventsUsed);
-          
+
           return {
             ...p,
             roles: userRoles,
