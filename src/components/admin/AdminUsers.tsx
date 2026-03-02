@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,17 +28,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
-import { 
-  Search, 
-  CheckCircle, 
-  XCircle, 
-  Eye, 
-  Loader2, 
-  UserCheck, 
+import {
+  Search,
+  CheckCircle,
+  XCircle,
+  Eye,
+  Loader2,
+  UserCheck,
   UserX,
   Shield,
   Settings,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -83,10 +84,21 @@ const AdminUsers = () => {
   const [adjustLimitOpen, setAdjustLimitOpen] = useState(false);
   const [selectedUserForLimit, setSelectedUserForLimit] = useState<UserProfile | null>(null);
   const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [syncingUsers, setSyncingUsers] = useState(false);
+  const hasFetchedUsersRef = useRef(false);
+  const isFetchingUsersRef = useRef(false);
   const { toast } = useToast();
   const { settings } = useSystemSettings();
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (force = false) => {
+    if (isFetchingUsersRef.current) return;
+    if (!force && hasFetchedUsersRef.current) return;
+
+    isFetchingUsersRef.current = true;
+    if (!hasFetchedUsersRef.current || force) {
+      setLoading(true);
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke("admin-operations", {
         body: { action: "get_all_users" },
@@ -94,6 +106,7 @@ const AdminUsers = () => {
 
       if (error) throw error;
       setUsers(data.users || []);
+      hasFetchedUsersRef.current = true;
     } catch (err) {
       console.error("Error fetching users:", err);
       toast({
@@ -103,6 +116,36 @@ const AdminUsers = () => {
       });
     } finally {
       setLoading(false);
+      isFetchingUsersRef.current = false;
+    }
+  };
+
+  const refreshUsers = () => fetchUsers(true);
+
+  const handleSyncUsers = async () => {
+    setSyncingUsers(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-operations", {
+        body: { action: "sync_users" },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Sincronização concluída",
+        description: `${data?.synced ?? 0} usuário(s) sincronizado(s).`,
+      });
+
+      await refreshUsers();
+    } catch (err) {
+      console.error("Error syncing users:", err);
+      toast({
+        title: "Erro na sincronização",
+        description: "Não foi possível sincronizar usuários agora.",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncingUsers(false);
     }
   };
 
@@ -124,7 +167,7 @@ const AdminUsers = () => {
         description: "O usuário agora pode acessar o sistema",
       });
 
-      fetchUsers();
+      refreshUsers();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro ao aprovar usuário";
       toast({
@@ -160,7 +203,7 @@ const AdminUsers = () => {
       setRejectDialogOpen(false);
       setRejectReason("");
       setSelectedUser(null);
-      fetchUsers();
+      refreshUsers();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro ao rejeitar usuário";
       toast({
@@ -187,7 +230,7 @@ const AdminUsers = () => {
         title: user.status === "approved" ? "Usuário desativado" : "Usuário reativado",
       });
 
-      fetchUsers();
+      refreshUsers();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro ao alterar status";
       toast({
@@ -243,7 +286,7 @@ const AdminUsers = () => {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
         <div>
           <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground">
             Gestão de Usuários
@@ -252,9 +295,17 @@ const AdminUsers = () => {
             Aprovar, rejeitar e gerenciar usuários do sistema
           </p>
         </div>
-        <Button onClick={() => setCreateUserOpen(true)}>
-          + Criar Usuário
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleSyncUsers} disabled={syncingUsers}>
+            {syncingUsers ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Sincronizar
+          </Button>
+          <Button onClick={() => setCreateUserOpen(true)}>+ Criar Usuário</Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -481,7 +532,7 @@ const AdminUsers = () => {
         user={selectedUser}
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
-        onUserUpdated={fetchUsers}
+        onUserUpdated={refreshUsers}
         systemLimit={settings.max_events_per_user}
       />
 
@@ -491,7 +542,7 @@ const AdminUsers = () => {
         onOpenChange={setAdjustLimitOpen}
         user={selectedUserForLimit}
         systemLimit={settings.max_events_per_user}
-        onLimitUpdated={fetchUsers}
+        onLimitUpdated={refreshUsers}
       />
 
       {/* Adjust Credits Modal */}
@@ -499,14 +550,14 @@ const AdminUsers = () => {
         open={adjustCreditsOpen}
         onOpenChange={setAdjustCreditsOpen}
         user={selectedUserForCredits}
-        onCreditsUpdated={fetchUsers}
+        onCreditsUpdated={refreshUsers}
       />
 
       {/* Create User Modal */}
       <CreateUserModal
         open={createUserOpen}
         onOpenChange={setCreateUserOpen}
-        onUserCreated={fetchUsers}
+        onUserCreated={refreshUsers}
       />
     </div>
   );

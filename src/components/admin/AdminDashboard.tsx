@@ -1,18 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
-import { 
-  Users, 
-  Calendar, 
-  UserCheck, 
-  Clock, 
+import {
+  Users,
+  Calendar,
+  UserCheck,
+  Clock,
   TrendingUp,
   CheckCircle,
   Loader2,
   UserX,
   AlertTriangle,
-  BarChart
+  BarChart,
 } from "lucide-react";
 import StatCard from "./dashboard/StatCard";
 import PendingUsersModal from "./dashboard/PendingUsersModal";
@@ -54,8 +54,10 @@ interface AdminDashboardProps {
 const AdminDashboard = ({ onTabChange }: AdminDashboardProps) => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const hasFetchedStatsRef = useRef(false);
+  const isFetchingStatsRef = useRef(false);
   const { settings } = useSystemSettings();
-  
+
   // Modal states
   const [pendingUsersOpen, setPendingUsersOpen] = useState(false);
   const [approvedUsersOpen, setApprovedUsersOpen] = useState(false);
@@ -68,19 +70,27 @@ const AdminDashboard = ({ onTabChange }: AdminDashboardProps) => {
   const [usersAtLimitOpen, setUsersAtLimitOpen] = useState(false);
   const [attendanceRateOpen, setAttendanceRateOpen] = useState(false);
 
-  const fetchStats = async () => {
+  const fetchStats = async (force = false) => {
+    if (isFetchingStatsRef.current) return;
+    if (!force && hasFetchedStatsRef.current) return;
+
+    isFetchingStatsRef.current = true;
+    if (!hasFetchedStatsRef.current || force) {
+      setLoading(true);
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke("admin-operations", {
         body: { action: "get_dashboard_stats" },
       });
 
       if (error) throw error;
-      
+
       // Add users at limit count
       const { data: usersData } = await supabase.functions.invoke("admin-operations", {
         body: { action: "get_all_users" },
       });
-      
+
       const usersAtLimit = (usersData?.users || []).filter((user: { event_limit: number | null; event_count: number }) => {
         const effectiveLimit = user.event_limit === -1 ? Infinity : (user.event_limit ?? settings.max_events_per_user);
         return user.event_count >= effectiveLimit && effectiveLimit !== Infinity;
@@ -90,7 +100,7 @@ const AdminDashboard = ({ onTabChange }: AdminDashboardProps) => {
       const { data: guests } = await supabase
         .from("guests")
         .select("status, checkin_done");
-      
+
       let confirmedCount = 0;
       let checkinCount = 0;
       (guests || []).forEach((g) => {
@@ -107,10 +117,12 @@ const AdminDashboard = ({ onTabChange }: AdminDashboardProps) => {
         },
         attendanceRate,
       });
+      hasFetchedStatsRef.current = true;
     } catch (err) {
       console.error("Error fetching stats:", err);
     } finally {
       setLoading(false);
+      isFetchingStatsRef.current = false;
     }
   };
 
@@ -119,8 +131,7 @@ const AdminDashboard = ({ onTabChange }: AdminDashboardProps) => {
   }, []);
 
   const handleRefresh = () => {
-    setLoading(true);
-    fetchStats();
+    fetchStats(true);
   };
 
   if (loading) {

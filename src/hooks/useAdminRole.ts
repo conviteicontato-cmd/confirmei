@@ -1,46 +1,61 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
 export function useAdminRole(user: User | null) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const lastCheckedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    async function checkRole() {
-      if (!user) {
-        setIsSuperAdmin(false);
-        setLoading(false);
-        return;
-      }
+    const userId = user?.id ?? null;
+    let cancelled = false;
 
-      // Critical: set loading=true when user changes to avoid flash of "Acesso Negado"
-      setLoading(true);
-
+    async function checkRole(targetUserId: string) {
       try {
         const { data, error } = await supabase
           .from("user_roles")
           .select("role")
-          .eq("user_id", user.id)
+          .eq("user_id", targetUserId)
           .eq("role", "super_admin")
           .maybeSingle();
 
-        if (error) {
-          console.error("Error checking admin role:", error);
-          setIsSuperAdmin(false);
-        } else {
+        if (error) throw error;
+        if (!cancelled) {
           setIsSuperAdmin(!!data);
         }
       } catch (err) {
         console.error("Error checking admin role:", err);
-        setIsSuperAdmin(false);
+        if (!cancelled) {
+          setIsSuperAdmin(false);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
-    checkRole();
-  }, [user]);
+    if (!userId) {
+      lastCheckedUserIdRef.current = null;
+      setIsSuperAdmin(false);
+      setLoading(false);
+      return;
+    }
+
+    // Evita refetch/loop quando apenas o objeto user muda mas o id é o mesmo
+    if (lastCheckedUserIdRef.current === userId) {
+      return;
+    }
+
+    lastCheckedUserIdRef.current = userId;
+    setLoading(true);
+    checkRole(userId);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   return { isSuperAdmin, loading };
 }
