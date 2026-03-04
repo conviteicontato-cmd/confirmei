@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import RouteErrorBoundary from "@/components/RouteErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -23,10 +24,10 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/event/:eventId" element={<EventDetails />} />
-          <Route path="/confirmar/:eventId" element={<PublicEvent />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/dashboard" element={<RouteErrorBoundary><Dashboard /></RouteErrorBoundary>} />
+          <Route path="/event/:eventId" element={<RouteErrorBoundary><EventDetails /></RouteErrorBoundary>} />
+          <Route path="/confirmar/:eventId" element={<RouteErrorBoundary><PublicEvent /></RouteErrorBoundary>} />
+          <Route path="/admin" element={<RouteErrorBoundary><Admin /></RouteErrorBoundary>} />
           <Route path="/reset-password" element={<ResetPassword />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

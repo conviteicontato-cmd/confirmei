@@ -63,8 +63,8 @@
     --sidebar-foreground: 30 23% 92%;
     --sidebar-primary: 30 23% 92%;
     --sidebar-primary-foreground: 227 35% 26%;
-    --sidebar-accent: 227 30% 35%;
-    --sidebar-accent-foreground: 30 23% 92%;
+    --sidebar-accent: 227 30% 38%;
+    --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 227 25% 32%;
     --sidebar-ring: 30 23% 92%;
 
@@ -190,21 +190,27 @@
     @apply border-primary ring-2 ring-primary/20 outline-none;
   }
 
-  /* Sidebar nav item */
+  /* Sidebar nav item — uses sidebar-specific tokens for correct contrast */
   .nav-item {
-    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground transition-all duration-200;
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200;
+    color: hsl(var(--sidebar-foreground) / 0.7);
   }
 
   .nav-item:hover {
-    @apply bg-accent text-accent-foreground;
+    background: hsl(var(--sidebar-accent));
+    color: hsl(var(--sidebar-accent-foreground));
   }
 
   .nav-item-active {
-    @apply nav-item bg-primary text-primary-foreground;
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200;
+    background: hsl(var(--sidebar-accent));
+    color: hsl(var(--sidebar-accent-foreground));
+    font-weight: 500;
   }
 
   .nav-item-active:hover {
-    @apply bg-primary text-primary-foreground;
+    background: hsl(var(--sidebar-accent));
+    color: hsl(var(--sidebar-accent-foreground));
   }
 }
 

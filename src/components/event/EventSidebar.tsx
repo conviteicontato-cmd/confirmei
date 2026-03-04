@@ -44,12 +44,12 @@ const SidebarContent = ({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-sidebar">
       <div className="p-6 border-b border-sidebar-border">
-        <h1 className="font-display text-xl font-bold text-foreground">
+        <h1 className="font-display text-xl font-bold" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
           Organizador
         </h1>
-        <p className="text-sm text-muted-foreground">Gestão de Eventos</p>
+        <p className="text-sm" style={{ color: 'hsl(var(--sidebar-foreground) / 0.6)' }}>Gestão de Eventos</p>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
@@ -71,7 +71,7 @@ const SidebarContent = ({
 
         {/* Event context */}
         <div className="pt-6">
-          <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 px-4 py-2 text-sm" style={{ color: 'hsl(var(--sidebar-foreground) / 0.5)' }}>
             <Calendar className="h-4 w-4" />
             <span className="font-medium truncate">{eventName}</span>
           </div>
@@ -81,9 +81,13 @@ const SidebarContent = ({
             className={cn(
               "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ml-2",
               activeTab === "convidados"
-                ? "text-primary font-medium"
-                : "text-muted-foreground hover:text-foreground"
+                ? "font-medium"
+                : ""
             )}
+            style={{
+              color: activeTab === "convidados" ? 'hsl(var(--sidebar-accent-foreground))' : 'hsl(var(--sidebar-foreground) / 0.7)',
+              background: activeTab === "convidados" ? 'hsl(var(--sidebar-accent))' : 'transparent',
+            }}
           >
             <Users className="h-4 w-4" />
             <span>Convidados</span>
@@ -94,9 +98,13 @@ const SidebarContent = ({
             className={cn(
               "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ml-2",
               activeTab === "checkin"
-                ? "text-primary font-medium"
-                : "text-muted-foreground hover:text-foreground"
+                ? "font-medium"
+                : ""
             )}
+            style={{
+              color: activeTab === "checkin" ? 'hsl(var(--sidebar-accent-foreground))' : 'hsl(var(--sidebar-foreground) / 0.7)',
+              background: activeTab === "checkin" ? 'hsl(var(--sidebar-accent))' : 'transparent',
+            }}
           >
             <QrCode className="h-4 w-4" />
             <span>Check-in</span>
@@ -107,9 +115,13 @@ const SidebarContent = ({
             className={cn(
               "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ml-2",
               activeTab === "configuracoes"
-                ? "text-primary font-medium"
-                : "text-muted-foreground hover:text-foreground"
+                ? "font-medium"
+                : ""
             )}
+            style={{
+              color: activeTab === "configuracoes" ? 'hsl(var(--sidebar-accent-foreground))' : 'hsl(var(--sidebar-foreground) / 0.7)',
+              background: activeTab === "configuracoes" ? 'hsl(var(--sidebar-accent))' : 'transparent',
+            }}
           >
             <Settings className="h-4 w-4" />
             <span>Configurações</span>
@@ -150,17 +162,17 @@ const EventSidebar = ({ user, eventName, eventId, activeTab, onTabChange }: Even
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar border-b border-sidebar-border">
         <div className="flex items-center justify-between p-4">
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-lg font-bold text-foreground truncate">
+            <h1 className="font-display text-lg font-bold truncate" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
               {eventName || "Evento"}
             </h1>
           </div>
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px]" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
+            <SheetContent side="left" className="w-64 p-0 bg-sidebar">
               <SidebarContent 
                 eventName={eventName}
                 activeTab={activeTab}
