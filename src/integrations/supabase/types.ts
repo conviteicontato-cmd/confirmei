@@ -52,6 +52,7 @@ export type Database = {
           auto_block: boolean
           checkin_code: string | null
           checkin_mode: string | null
+          checkin_password: string | null
           confirmation_active: boolean
           confirmation_deadline: string | null
           cover_image_url: string | null
@@ -72,6 +73,7 @@ export type Database = {
           auto_block?: boolean
           checkin_code?: string | null
           checkin_mode?: string | null
+          checkin_password?: string | null
           confirmation_active?: boolean
           confirmation_deadline?: string | null
           cover_image_url?: string | null
@@ -92,6 +94,7 @@ export type Database = {
           auto_block?: boolean
           checkin_code?: string | null
           checkin_mode?: string | null
+          checkin_password?: string | null
           confirmation_active?: boolean
           confirmation_deadline?: string | null
           cover_image_url?: string | null

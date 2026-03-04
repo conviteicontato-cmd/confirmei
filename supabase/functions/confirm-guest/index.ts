@@ -170,6 +170,50 @@ Deno.serve(async (req) => {
 
     console.log(`[confirm-guest] Successfully confirmed guest ${guest_id}`);
 
+    // Send email notification asynchronously (don't block response)
+    try {
+      const { data: emailEvent } = await supabase
+        .from('events')
+        .select('email_notifications, host_email, name, webhook_url')
+        .eq('id', event_id)
+        .single();
+
+      if (emailEvent?.email_notifications && emailEvent?.host_email) {
+        // Find guest name and group
+        const { data: guestData } = await supabase
+          .from('guests')
+          .select('name, group_name')
+          .eq('id', guest_id)
+          .single();
+
+        const emailUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-confirmation-email`;
+        fetch(emailUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
+          body: JSON.stringify({
+            event_id,
+            guest_id,
+            host_email: emailEvent.host_email,
+            event_name: emailEvent.name,
+            guest_name: guestData?.name || 'Convidado',
+            confirmed_adults: validatedAdults,
+            confirmed_children: validatedChildren,
+            group_name: guestData?.group_name || null,
+            webhook_url: emailEvent.webhook_url || null,
+          }),
+        }).then(res => {
+          console.log(`[confirm-guest] Email notification sent, status: ${res.status}`);
+        }).catch(err => {
+          console.error(`[confirm-guest] Email notification failed:`, err.message);
+        });
+      }
+    } catch (emailErr: any) {
+      console.error(`[confirm-guest] Email check failed:`, emailErr.message);
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
