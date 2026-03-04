@@ -1,65 +1,93 @@
 
 
-## Analysis
+## Plano: Notificações por E-mail + Check-in Público com Senha
 
-The auth flow in `Auth.tsx` (lines 181-205) already correctly checks profile status after login and blocks pending/rejected users by signing them out. The pending/rejected UI screens are also already implemented.
+### Diagnóstico
 
-**The real vulnerability**: Protected pages (`Dashboard.tsx`, `EventDetails.tsx`, `Admin.tsx`) only check for an active session -- they do NOT verify profile `status === "approved"`. A user whose email is confirmed gets a valid session from Supabase Auth. Even though `Auth.tsx` calls `signOut()` for pending users, there's a race condition: if the user navigates directly to `/dashboard` (e.g., via the email confirmation redirect URL `emailRedirectTo: window.location.origin`), they bypass the Auth.tsx gate entirely and land on the dashboard with full access.
+**E-mail:** O toggle e campo `host_email` existem no `EventSettings`, são salvos no banco (`events.email_notifications`, `events.host_email`), mas o `confirm-guest` edge function **não dispara nenhum e-mail** após a confirmação. Não há edge function de envio de e-mail nem integração com provedor.
 
-Additionally, the `useEffect` in `Auth.tsx` (lines 31-49) that runs on page load checks profile status but only sets UI state -- it doesn't sign out the user if they're pending.
-
-## Plan
-
-### 1. Create a reusable `useProfileGuard` hook (new file)
-
-**File:** `src/hooks/useProfileGuard.ts`
-
-This hook will:
-- Accept the current user
-- Query the `profiles` table for `status`
-- Return `{ status, loading }` where status is `"approved" | "pending" | "rejected" | null`
-- Used by all protected pages to gate access
-
-### 2. Update `Auth.tsx` -- fix the initial session check
-
-**File:** `src/pages/Auth.tsx` (lines 31-49)
-
-The existing `useEffect` checks profile status on load but doesn't sign out pending/rejected users who arrive via email confirmation redirect. Fix: add `await supabase.auth.signOut()` for pending and rejected cases in the initial session check, matching what the login handler already does.
-
-### 3. Update `Dashboard.tsx` -- add profile status gate
-
-**File:** `src/pages/Dashboard.tsx`
-
-After session is confirmed, check profile status using `useProfileGuard`. If status is not `"approved"`:
-- Sign the user out
-- Redirect to `/auth`
-
-This adds a server-side truth check even if someone navigates directly to `/dashboard`.
-
-### 4. Update `EventDetails.tsx` -- add same gate
-
-**File:** `src/pages/EventDetails.tsx`
-
-Same pattern: check profile status, redirect if not approved.
-
-### 5. No database changes needed
-
-The `profiles` table already has a `status` column with values `pending`, `approved`, `rejected`. The admin approval/rejection actions (`approve_user`, `reject_user`) in the edge function already work correctly. No new columns or migrations are required.
-
-### 6. No email changes
-
-Automated approval emails would require a third-party email service (non-auth emails are not supported by the platform's built-in email system). The admin can manually notify users, or this can be added later with an external integration.
+**Check-in público:** A rota `/checkin/:code` **não existe** no `App.tsx`. O link gerado em EventSettings (`/checkin/{checkinCode}`) leva a 404. Não há página pública de check-in nem campo de senha no banco.
 
 ---
 
-### Summary
+### (A) Notificações por E-mail
 
-| File | Change |
+**1. Edge function `send-confirmation-email`**
+- Nova edge function que recebe: `event_id`, `guest_id`, `host_email`, `event_name`, `guest_name`, `confirmed_adults`, `confirmed_children`, `group_name`
+- Usa a Lovable AI API (LOVABLE_API_KEY) para envio de e-mail transacional, OU implementa via o webhook existente (`send-webhook`) como fallback
+- Assunto: `"Nova confirmação – {event_name}"`
+- Corpo: nome do convidado, adultos, crianças, grupo, data/hora
+- Retry: 3 tentativas com backoff
+- Retorna log de sucesso/falha
+
+**2. Integrar no `confirm-guest`**
+- Após confirmação bem-sucedida, buscar `email_notifications` e `host_email` do evento
+- Se ativados, chamar `send-confirmation-email` de forma assíncrona (não bloquear a resposta do convidado)
+- Logar resultado no console
+
+**3. UI de indisponibilidade**
+- No `EventSettings`, se e-mail não estiver configurado no backend (sem provedor), mostrar aviso amarelo: "Envio de e-mail ainda não configurado"
+
+**Decisão de provedor:** Como o projeto tem Lovable Cloud, vou usar uma edge function que envia e-mail via `fetch` para o webhook do Make (já configurado pelo anfitrião) como mecanismo de notificação. Se o webhook não estiver configurado, o e-mail de notificação não será enviado e isso será indicado na UI.
+
+> **Alternativa mais robusta:** Criar integração direta com Resend ou outro provedor de e-mail transacional. Isso requer API key.
+
+---
+
+### (B) Check-in Público com Senha
+
+**1. Migração de banco**
+- Adicionar coluna `checkin_password` (text, nullable) na tabela `events`
+
+**2. Edge function `verify-checkin-password`**
+- Recebe `checkin_code` + `password`
+- Busca evento por `checkin_code`
+- Se evento não encontrado: erro 404
+- Se evento não tem senha: erro 403 ("Defina uma senha nas configurações")
+- Compara senha (texto simples no MVP; pode evoluir para hash)
+- Se correta: retorna `event_id` + token JWT temporário (8h)
+- Se incorreta: erro 401
+
+**3. Nova rota `/checkin/:code`**
+- Adicionar no `App.tsx`: `<Route path="/checkin/:code" element={<PublicCheckin />} />`
+
+**4. Nova página `PublicCheckin.tsx`**
+- Busca evento pelo `checkin_code` via query pública
+- Se não existe: "Código de check-in inválido"
+- Se existe mas sem senha: "Check-in protegido. Defina uma senha nas configurações do evento."
+- Se existe e tem senha:
+  - Verifica se já tem sessão válida (localStorage token, max 8h)
+  - Se não: mostra tela de senha → chama `verify-checkin-password`
+  - Se sim: renderiza `CheckinPage` com `eventId` e `eventName`
+- Botão "Sair do Check-in" limpa sessão
+
+**5. Campo de senha no `EventSettings`**
+- Adicionar campo "Senha do Check-in" abaixo do código
+- Tipo password com toggle de visibilidade
+- Salvo junto com as demais configurações no `handleSave`
+
+**6. Segurança**
+- Senha comparada server-side via edge function
+- Token de sessão armazenado em localStorage com expiração de 8h
+- Sem acesso direto aos dados sem validação
+
+---
+
+### Arquivos a criar/editar
+
+| Arquivo | Ação |
 |---|---|
-| `src/hooks/useProfileGuard.ts` | New hook: queries profile status for authenticated user |
-| `src/pages/Auth.tsx` | Fix initial session check to sign out non-approved users |
-| `src/pages/Dashboard.tsx` | Add profile status gate before rendering |
-| `src/pages/EventDetails.tsx` | Add profile status gate before rendering |
+| `supabase/functions/send-confirmation-email/index.ts` | Criar |
+| `supabase/functions/verify-checkin-password/index.ts` | Criar |
+| `supabase/functions/confirm-guest/index.ts` | Editar (disparar e-mail) |
+| `src/pages/PublicCheckin.tsx` | Criar |
+| `src/components/event/EventSettings.tsx` | Editar (campo senha) |
+| `src/App.tsx` | Editar (nova rota) |
+| Migração SQL | `ALTER TABLE events ADD COLUMN checkin_password text` |
 
-The core fix ensures that every protected page verifies `profile.status === "approved"` server-side, not just the login form. Users with confirmed emails but pending approval will be signed out and redirected to the auth page with the appropriate message.
+### Ordem de execução
+1. Migração SQL (adicionar `checkin_password`)
+2. Edge functions (`send-confirmation-email`, `verify-checkin-password`)
+3. Atualizar `confirm-guest` para disparar notificação
+4. Frontend: `PublicCheckin.tsx`, rota, campo senha em EventSettings
 
