@@ -60,15 +60,15 @@ const SidebarContent = ({
   ];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-sidebar">
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-2">
-          <Shield className="h-6 w-6 text-primary" />
+          <Shield className="h-6 w-6" style={{ color: 'hsl(var(--sidebar-foreground))' }} />
           <div>
-            <h1 className="font-display text-xl font-bold text-foreground">
+            <h1 className="font-display text-xl font-bold" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
               Admin Panel
             </h1>
-            <p className="text-sm text-muted-foreground">Super Admin</p>
+            <p className="text-sm" style={{ color: 'hsl(var(--sidebar-foreground) / 0.6)' }}>Super Admin</p>
           </div>
         </div>
       </div>
@@ -158,14 +158,14 @@ const AdminSidebar = ({ user, activeTab, onTabChange }: AdminSidebarProps) => {
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar border-b border-sidebar-border">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            <h1 className="font-display text-lg font-bold text-foreground">
+            <Shield className="h-5 w-5" style={{ color: 'hsl(var(--sidebar-foreground))' }} />
+            <h1 className="font-display text-lg font-bold" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
               Admin Panel
             </h1>
           </div>
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
+              <Button variant="ghost" size="icon" className="relative min-w-[44px] min-h-[44px]" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
                 <Menu className="h-5 w-5" />
                 {pendingCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs w-5 h-5 flex items-center justify-center rounded-full">
@@ -174,7 +174,7 @@ const AdminSidebar = ({ user, activeTab, onTabChange }: AdminSidebarProps) => {
                 )}
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
+            <SheetContent side="left" className="w-64 p-0 bg-sidebar">
               <SidebarContent 
                 activeTab={activeTab} 
                 onTabChange={handleTabChange}
