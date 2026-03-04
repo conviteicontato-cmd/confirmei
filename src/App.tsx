@@ -12,6 +12,7 @@ import PublicEvent from "./pages/PublicEvent";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
+import PublicCheckin from "./pages/PublicCheckin";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/confirmar/:eventId" element={<RouteErrorBoundary><PublicEvent /></RouteErrorBoundary>} />
           <Route path="/admin" element={<RouteErrorBoundary><Admin /></RouteErrorBoundary>} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/checkin/:code" element={<PublicCheckin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

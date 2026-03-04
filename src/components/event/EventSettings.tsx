@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Collapsible,
   CollapsibleContent,
@@ -41,6 +42,7 @@ import {
   X,
   Play,
   CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import CoverImageUpload from "@/components/dashboard/CoverImageUpload";
 
@@ -62,6 +64,7 @@ interface EventData {
   email_notifications: boolean | null;
   checkin_mode: string | null;
   checkin_code: string | null;
+  checkin_password: string | null;
   webhook_url: string | null;
   confirmation_active: boolean | null;
   confirmation_deadline: string | null;
@@ -87,6 +90,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
   const [checkinMode, setCheckinMode] = useState("manual");
   const [checkinCode, setCheckinCode] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [checkinPassword, setCheckinPassword] = useState("");
   const [confirmationActive, setConfirmationActive] = useState(true);
   const [autoBlock, setAutoBlock] = useState(false);
   const [confirmationDeadline, setConfirmationDeadline] = useState("");
@@ -116,6 +120,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
       setCheckinMode(data.checkin_mode || "manual");
       setCheckinCode(data.checkin_code || "");
       setWebhookUrl(data.webhook_url || "");
+      setCheckinPassword((data as any).checkin_password || "");
       setConfirmationActive(data.confirmation_active !== false);
       setAutoBlock(data.auto_block || false);
       setConfirmationDeadline(data.confirmation_deadline ? data.confirmation_deadline.substring(0, 16) : "");
@@ -182,6 +187,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
           host_email: hostEmail.trim() || null,
           email_notifications: emailNotifications,
           checkin_mode: checkinMode,
+          checkin_password: checkinPassword.trim() || null,
           webhook_url: webhookUrl.trim() || null,
           confirmation_active: confirmationActive,
           auto_block: autoBlock,
@@ -533,6 +539,15 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
               onCheckedChange={setEmailNotifications}
             />
           </div>
+
+          {emailNotifications && !webhookUrl && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
+              <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+              <p className="text-xs text-warning">
+                Configure um webhook (Make/Zapier) na seção abaixo para que os e-mails sejam enviados.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Confirmation Control Card */}
@@ -711,6 +726,24 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
           <p className="text-xs text-muted-foreground font-mono">
             {checkinUrl}
           </p>
+
+          <div className="space-y-2 pt-3 border-t border-border">
+            <Label htmlFor="checkinPassword" className="text-sm font-medium">
+              Senha do Check-in
+            </Label>
+            <Input
+              id="checkinPassword"
+              type="password"
+              value={checkinPassword}
+              onChange={(e) => setCheckinPassword(e.target.value)}
+              placeholder="Defina uma senha para acesso sem login"
+              className="input-elegant"
+              autoComplete="new-password"
+            />
+            <p className="text-xs text-muted-foreground">
+              Esta senha será exigida ao acessar o link de check-in sem login.
+            </p>
+          </div>
         </div>
 
         {/* Webhook Integration Card */}
