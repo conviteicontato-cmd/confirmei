@@ -19,8 +19,13 @@ class RouteErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("[RouteErrorBoundary] Error:", error);
-    console.error("[RouteErrorBoundary] Component stack:", errorInfo.componentStack);
+    console.error("[RouteErrorBoundary] Runtime error captured", {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+      path: window.location.pathname,
+    });
   }
 
   public render() {
