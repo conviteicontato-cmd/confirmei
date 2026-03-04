@@ -19,8 +19,13 @@ class AdminErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("Admin Error Boundary caught:", error);
-    console.error("Admin component stack:", errorInfo.componentStack);
+    console.error("[AdminErrorBoundary] Runtime error captured", {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+      path: window.location.pathname,
+    });
   }
 
   public render() {
