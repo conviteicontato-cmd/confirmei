@@ -60,6 +60,7 @@ export type Database = {
           email_notifications: boolean | null
           event_date: string
           host_email: string | null
+          host_password: string | null
           id: string
           name: string
           primary_color: string | null
@@ -81,6 +82,7 @@ export type Database = {
           email_notifications?: boolean | null
           event_date: string
           host_email?: string | null
+          host_password?: string | null
           id?: string
           name: string
           primary_color?: string | null
@@ -102,6 +104,7 @@ export type Database = {
           email_notifications?: boolean | null
           event_date?: string
           host_email?: string | null
+          host_password?: string | null
           id?: string
           name?: string
           primary_color?: string | null

@@ -65,6 +65,7 @@ interface EventData {
   checkin_mode: string | null;
   checkin_code: string | null;
   checkin_password: string | null;
+  host_password: string | null;
   webhook_url: string | null;
   confirmation_active: boolean | null;
   confirmation_deadline: string | null;
@@ -91,6 +92,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
   const [checkinCode, setCheckinCode] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [checkinPassword, setCheckinPassword] = useState("");
+  const [hostPassword, setHostPassword] = useState("");
   const [confirmationActive, setConfirmationActive] = useState(true);
   const [autoBlock, setAutoBlock] = useState(false);
   const [confirmationDeadline, setConfirmationDeadline] = useState("");
@@ -121,6 +123,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
       setCheckinCode(data.checkin_code || "");
       setWebhookUrl(data.webhook_url || "");
       setCheckinPassword((data as any).checkin_password || "");
+      setHostPassword((data as any).host_password || "");
       setConfirmationActive(data.confirmation_active !== false);
       setAutoBlock(data.auto_block || false);
       setConfirmationDeadline(data.confirmation_deadline ? data.confirmation_deadline.substring(0, 16) : "");
@@ -188,6 +191,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
           email_notifications: emailNotifications,
           checkin_mode: checkinMode,
           checkin_password: checkinPassword.trim() || null,
+          host_password: hostPassword.trim() || null,
           webhook_url: webhookUrl.trim() || null,
           confirmation_active: confirmationActive,
           auto_block: autoBlock,
@@ -742,6 +746,36 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
             />
             <p className="text-xs text-muted-foreground">
               Esta senha será exigida ao acessar o link de check-in sem login.
+            </p>
+          </div>
+        </div>
+
+        {/* Host Password Card */}
+        <div className="card-elegant p-6 space-y-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Hash className="h-4 w-4" />
+            <span className="font-medium text-foreground">Visão do Anfitrião</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Defina uma senha para o anfitrião acompanhar as confirmações (somente leitura)
+          </p>
+
+          <div className="space-y-2">
+            <Label htmlFor="hostPassword" className="text-sm font-medium">
+              Senha do Anfitrião (4-6 dígitos)
+            </Label>
+            <Input
+              id="hostPassword"
+              type="password"
+              value={hostPassword}
+              onChange={(e) => setHostPassword(e.target.value)}
+              placeholder="Ex: 1234"
+              className="input-elegant"
+              maxLength={6}
+              autoComplete="new-password"
+            />
+            <p className="text-xs text-muted-foreground">
+              O anfitrião usará esta senha para acessar o link: <span className="font-mono">{window.location.origin}/evento/{eventId}/anfitriao</span>
             </p>
           </div>
         </div>

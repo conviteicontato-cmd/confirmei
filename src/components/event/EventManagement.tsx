@@ -19,6 +19,7 @@ import EventStatsCards from "./EventStatsCards";
 import GuestTable from "./GuestTable";
 import AddGuestModal from "./AddGuestModal";
 import EditGuestModal from "./EditGuestModal";
+import ShareHostModal from "./ShareHostModal";
 
 import { Json } from "@/integrations/supabase/types";
 
@@ -35,6 +36,7 @@ interface Event {
   primary_color: string;
   secondary_color: string;
   webhook_url: string | null;
+  host_password: string | null;
 }
 
 export interface Guest {
@@ -75,6 +77,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
   const [loading, setLoading] = useState(true);
   const [addGuestOpen, setAddGuestOpen] = useState(false);
   const [editGuest, setEditGuest] = useState<Guest | null>(null);
+  const [shareHostOpen, setShareHostOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -495,6 +498,14 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
           <Button
             variant="outline"
             className="rounded-full"
+            onClick={() => setShareHostOpen(true)}
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Compartilhar com Anfitrião
+          </Button>
+          <Button
+            variant="outline"
+            className="rounded-full"
             onClick={() => window.open(`/confirmar/${event.id}`, "_blank")}
           >
             <ExternalLink className="h-4 w-4 mr-2" />
@@ -577,6 +588,15 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
         guest={editGuest}
         eventId={eventId}
         onSuccess={fetchEventData}
+      />
+
+      {/* Share Host Modal */}
+      <ShareHostModal
+        open={shareHostOpen}
+        onOpenChange={setShareHostOpen}
+        eventId={eventId}
+        eventName={event.name}
+        currentPassword={event.host_password}
       />
     </div>
   );
