@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { LayoutDashboard, Calendar, LogOut, Menu, Shield, KeyRound } from "lucide-react";
+import logo from "@/assets/Logotipo_Fundo_Tranparente.png";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -45,11 +46,8 @@ const SidebarContent = ({
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
-      <div className="p-6 border-b border-sidebar-border">
-        <h1 className="font-display text-xl font-bold" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
-          Organizador
-        </h1>
-        <p className="text-sm" style={{ color: 'hsl(var(--sidebar-foreground) / 0.6)' }}>Gestão de Eventos</p>
+      <div className="p-6 border-b border-sidebar-border flex items-center justify-center">
+        <img src={logo} alt="Confirmei" className="h-10 w-auto" />
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
@@ -119,9 +117,7 @@ const Sidebar = ({ user, activeSection = "painel" }: SidebarProps) => {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar border-b border-sidebar-border">
         <div className="flex items-center justify-between p-4">
-          <h1 className="font-display text-lg font-bold" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
-            Organizador
-          </h1>
+          <img src={logo} alt="Confirmei" className="h-8 w-auto" />
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px]" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
