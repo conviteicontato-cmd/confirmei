@@ -340,6 +340,7 @@ export type Database = {
       public_events: {
         Row: {
           auto_block: boolean | null
+          checkin_code: string | null
           confirmation_active: boolean | null
           confirmation_deadline: string | null
           cover_image_url: string | null
@@ -352,6 +353,7 @@ export type Database = {
         }
         Insert: {
           auto_block?: boolean | null
+          checkin_code?: string | null
           confirmation_active?: boolean | null
           confirmation_deadline?: string | null
           cover_image_url?: string | null
@@ -364,6 +366,7 @@ export type Database = {
         }
         Update: {
           auto_block?: boolean | null
+          checkin_code?: string | null
           confirmation_active?: boolean | null
           confirmation_deadline?: string | null
           cover_image_url?: string | null
