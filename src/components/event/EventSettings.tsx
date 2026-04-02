@@ -65,6 +65,7 @@ interface EventData {
   checkin_mode: string | null;
   checkin_code: string | null;
   checkin_password: string | null;
+  host_password: string | null;
   webhook_url: string | null;
   confirmation_active: boolean | null;
   confirmation_deadline: string | null;
