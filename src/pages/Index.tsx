@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import logo from "@/assets/Logotipo_Fundo_Tranparente.png";
+import logo from "@/assets/Logo.png";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -10,15 +10,8 @@ const Index = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Fixed Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <img src={logo} alt="Convitei" className="h-9" />
-          <Button
-            variant="outline"
-            onClick={() => navigate("/auth")}
-            className="rounded-full px-6"
-          >
-            Entrar
-          </Button>
+        <div className="container mx-auto px-4 h-20 flex items-center justify-center">
+          <img src={logo} alt="Confirmei" className="h-14" />
         </div>
       </header>
 
