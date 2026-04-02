@@ -11,10 +11,7 @@ const Index = () => {
       {/* Fixed Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src={logo} alt="Confirmei" className="h-8" />
-            <span className="text-xl font-display font-bold text-foreground">Confirmei</span>
-          </div>
+          <img src={logo} alt="Confirmei" className="h-9" />
           <Button
             variant="outline"
             onClick={() => navigate("/auth")}
