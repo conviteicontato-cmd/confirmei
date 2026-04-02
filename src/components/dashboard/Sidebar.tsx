@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { LayoutDashboard, Calendar, LogOut, Menu, Shield, KeyRound } from "lucide-react";
+import logo from "@/assets/Logotipo_Fundo_Tranparente.png";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
