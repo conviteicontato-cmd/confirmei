@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import logo from "@/assets/Logotipo_Fundo_Tranparente.png";
+import logo from "@/assets/Logo.png";
 
 const Index = () => {
   const navigate = useNavigate();
