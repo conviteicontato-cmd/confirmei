@@ -10,7 +10,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, Clock, QrCode, CheckCircle, MessageSquare, X, Users, Baby, FolderOpen } from "lucide-react";
+import { Search, Clock, QrCode, CheckCircle, MessageSquare, X, Users, Baby, FolderOpen, Filter } from "lucide-react";
 import type { Guest } from "./EventManagement";
 
 interface GuestTableReadOnlyProps {
@@ -20,6 +20,7 @@ interface GuestTableReadOnlyProps {
 const GuestTableReadOnly = ({ guests }: GuestTableReadOnlyProps) => {
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("__all__");
+  const [statusFilter, setStatusFilter] = useState("__all__");
 
   const groups = useMemo(() => {
     const set = new Set<string>();
@@ -33,9 +34,13 @@ const GuestTableReadOnly = ({ guests }: GuestTableReadOnlyProps) => {
       const matchesGroup = groupFilter === "__all__"
         || (groupFilter === "__none__" && !guest.group_name)
         || guest.group_name === groupFilter;
-      return matchesSearch && matchesGroup;
+      const matchesStatus = statusFilter === "__all__"
+        || (statusFilter === "confirmed" && guest.status === "confirmed" && !guest.checkin_done)
+        || (statusFilter === "pending" && guest.status === "pending")
+        || (statusFilter === "checkin" && guest.checkin_done);
+      return matchesSearch && matchesGroup && matchesStatus;
     });
-  }, [guests, search, groupFilter]);
+  }, [guests, search, groupFilter, statusFilter]);
 
   const getStatusBadge = (guest: Guest) => {
     if (guest.checkin_done) {
@@ -90,6 +95,18 @@ const GuestTableReadOnly = ({ guests }: GuestTableReadOnlyProps) => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 rounded-lg" />
         </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Todos os status</SelectItem>
+            <SelectItem value="confirmed">Confirmados</SelectItem>
+            <SelectItem value="pending">Pendentes</SelectItem>
+            <SelectItem value="checkin">Check-in</SelectItem>
+          </SelectContent>
+        </Select>
         {groups.length > 0 && (
           <Select value={groupFilter} onValueChange={setGroupFilter}>
             <SelectTrigger className="w-full sm:w-[220px]">
@@ -109,7 +126,7 @@ const GuestTableReadOnly = ({ guests }: GuestTableReadOnlyProps) => {
       <div className="lg:hidden space-y-3">
         {filteredGuests.length === 0 ? (
           <div className="card-elegant p-8 text-center text-muted-foreground">
-            {search || groupFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
+            {search || groupFilter !== "__all__" || statusFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
           </div>
         ) : (
           filteredGuests.map((guest) => <GuestCard key={guest.id} guest={guest} />)
@@ -135,7 +152,7 @@ const GuestTableReadOnly = ({ guests }: GuestTableReadOnlyProps) => {
             {filteredGuests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={groups.length > 0 ? 8 : 7} className="text-center py-8 text-muted-foreground">
-                  {search || groupFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
+                  {search || groupFilter !== "__all__" || statusFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
                 </TableCell>
               </TableRow>
             ) : (

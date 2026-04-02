@@ -37,6 +37,7 @@ interface Event {
   secondary_color: string;
   webhook_url: string | null;
   host_password: string | null;
+  allow_host_edit: boolean;
 }
 
 export interface Guest {
@@ -597,6 +598,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
         eventId={eventId}
         eventName={event.name}
         currentPassword={event.host_password}
+        currentAllowEdit={event.allow_host_edit ?? false}
       />
     </div>
   );

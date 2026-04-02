@@ -1,14 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Lock, AlertTriangle, LogOut, RefreshCw } from "lucide-react";
+import { Loader2, Lock, AlertTriangle, LogOut, RefreshCw, Plus } from "lucide-react";
 import EventStatsCards from "@/components/event/EventStatsCards";
 import GuestTableReadOnly from "@/components/event/GuestTableReadOnly";
+import GuestTable from "@/components/event/GuestTable";
+import AddGuestModal from "@/components/event/AddGuestModal";
+import EditGuestModal from "@/components/event/EditGuestModal";
 import type { Guest } from "@/components/event/EventManagement";
 
 type PageState = "loading" | "not_found" | "no_password" | "login" | "authenticated";
@@ -20,6 +24,15 @@ interface HostSession {
   event_name: string;
   token: string;
   expires_at: number;
+  allow_host_edit?: boolean;
+}
+
+interface Stats {
+  total: number;
+  confirmed: number;
+  pending: number;
+  checkedIn: number;
+  expectedPeople: number;
 }
 
 const getStoredSession = (eventId: string): HostSession | null => {
@@ -37,21 +50,15 @@ const getStoredSession = (eventId: string): HostSession | null => {
   }
 };
 
-interface Stats {
-  total: number;
-  confirmed: number;
-  pending: number;
-  checkedIn: number;
-  expectedPeople: number;
-}
-
 const HostView = () => {
   const { eventId } = useParams<{ eventId: string }>();
+  const { toast } = useToast();
   const [state, setState] = useState<PageState>("loading");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [session, setSession] = useState<HostSession | null>(null);
+  const [allowHostEdit, setAllowHostEdit] = useState(false);
 
   // Data state
   const [guests, setGuests] = useState<Guest[]>([]);
@@ -59,16 +66,20 @@ const HostView = () => {
   const [dataLoading, setDataLoading] = useState(true);
   const [eventName, setEventName] = useState("");
 
+  // Edit mode state
+  const [addGuestOpen, setAddGuestOpen] = useState(false);
+  const [editGuest, setEditGuest] = useState<Guest | null>(null);
+
   useEffect(() => {
     if (!eventId) { setState("not_found"); return; }
     const stored = getStoredSession(eventId);
     if (stored) {
       setSession(stored);
       setEventName(stored.event_name);
+      setAllowHostEdit(stored.allow_host_edit ?? false);
       setState("authenticated");
       return;
     }
-    // Check if event exists
     const check = async () => {
       const { data } = await supabase
         .from("events")
@@ -106,9 +117,28 @@ const HostView = () => {
     finally { setDataLoading(false); }
   }, [eventId]);
 
+  // Also re-check allow_host_edit from DB on each refresh
+  const refreshPermission = useCallback(async () => {
+    if (!eventId) return;
+    try {
+      const { data } = await supabase
+        .from("events")
+        .select("allow_host_edit")
+        .eq("id", eventId)
+        .single();
+      if (data) {
+        const val = (data as any).allow_host_edit ?? false;
+        setAllowHostEdit(val);
+      }
+    } catch { /* silent */ }
+  }, [eventId]);
+
   useEffect(() => {
-    if (state === "authenticated") fetchGuests();
-  }, [state, fetchGuests]);
+    if (state === "authenticated") {
+      fetchGuests();
+      refreshPermission();
+    }
+  }, [state, fetchGuests, refreshPermission]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,10 +157,17 @@ const HostView = () => {
         return;
       }
       if (data?.success) {
-        const s: HostSession = { event_id: data.event_id, event_name: data.event_name, token: data.token, expires_at: data.expires_at };
+        const s: HostSession = {
+          event_id: data.event_id,
+          event_name: data.event_name,
+          token: data.token,
+          expires_at: data.expires_at,
+          allow_host_edit: data.allow_host_edit ?? false,
+        };
         localStorage.setItem(`${SESSION_KEY}_${eventId}`, JSON.stringify(s));
         setSession(s);
         setEventName(data.event_name);
+        setAllowHostEdit(data.allow_host_edit ?? false);
         setState("authenticated");
       }
     } catch { setError("Erro de conexão. Tente novamente."); }
@@ -143,6 +180,18 @@ const HostView = () => {
     setPassword("");
     setError("");
     setState("login");
+  };
+
+  const handleDeleteGuest = async (guestId: string) => {
+    if (!eventId) return;
+    try {
+      const { error } = await supabase.from("guests").delete().eq("id", guestId);
+      if (error) throw error;
+      toast({ title: "Convidado removido" });
+      fetchGuests();
+    } catch (err: any) {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    }
   };
 
   if (state === "loading") {
@@ -210,7 +259,7 @@ const HostView = () => {
     );
   }
 
-  // Authenticated - read-only dashboard
+  // Authenticated dashboard
   if (state === "authenticated") {
     const progressPercent = stats.total > 0 ? Math.round((stats.confirmed / stats.total) * 100) : 0;
 
@@ -219,7 +268,13 @@ const HostView = () => {
         <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
           <h2 className="font-bold text-foreground truncate">{eventName}</h2>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={fetchGuests} disabled={dataLoading}>
+            {allowHostEdit && (
+              <Button variant="outline" size="sm" onClick={() => setAddGuestOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Convidado
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => { fetchGuests(); refreshPermission(); }} disabled={dataLoading}>
               <RefreshCw className={`h-4 w-4 mr-1 ${dataLoading ? "animate-spin" : ""}`} />
               Atualizar
             </Button>
@@ -243,7 +298,6 @@ const HostView = () => {
             <>
               <EventStatsCards stats={stats} />
 
-              {/* Progress bar */}
               <div className="mb-6 lg:mb-8 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Progresso de confirmações</span>
@@ -252,10 +306,40 @@ const HostView = () => {
                 <Progress value={progressPercent} className="h-3" />
               </div>
 
-              <GuestTableReadOnly guests={guests} />
+              {allowHostEdit && eventId ? (
+                <GuestTable
+                  guests={guests}
+                  eventId={eventId}
+                  onRefresh={fetchGuests}
+                  onEdit={(guest) => setEditGuest(guest)}
+                  webhookUrl={null}
+                />
+              ) : (
+                <GuestTableReadOnly guests={guests} />
+              )}
             </>
           )}
         </div>
+
+        {allowHostEdit && eventId && (
+          <>
+            <AddGuestModal
+              open={addGuestOpen}
+              onOpenChange={setAddGuestOpen}
+              eventId={eventId}
+              onSuccess={fetchGuests}
+            />
+            {editGuest && (
+              <EditGuestModal
+                open={!!editGuest}
+                onOpenChange={(open) => { if (!open) setEditGuest(null); }}
+                guest={editGuest}
+                eventId={eventId}
+                onSuccess={fetchGuests}
+              />
+            )}
+          </>
+        )}
       </div>
     );
   }
