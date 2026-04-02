@@ -498,6 +498,14 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
           <Button
             variant="outline"
             className="rounded-full"
+            onClick={() => setShareHostOpen(true)}
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Compartilhar com Anfitrião
+          </Button>
+          <Button
+            variant="outline"
+            className="rounded-full"
             onClick={() => window.open(`/confirmar/${event.id}`, "_blank")}
           >
             <ExternalLink className="h-4 w-4 mr-2" />
