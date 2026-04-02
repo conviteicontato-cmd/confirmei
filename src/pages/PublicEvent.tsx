@@ -136,7 +136,7 @@ const PublicEvent = () => {
         // Use the public_events view which excludes sensitive fields like host_email
          const { data, error } = await supabase
           .from("public_events")
-          .select("id, name, event_date, short_message, cover_image_url, primary_color, secondary_color, webhook_url, confirmation_active, confirmation_deadline, auto_block")
+          .select("id, name, event_date, short_message, cover_image_url, primary_color, secondary_color, confirmation_active, confirmation_deadline, auto_block")
           .eq("id", eventId)
           .maybeSingle();
 
