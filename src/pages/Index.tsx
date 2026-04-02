@@ -10,8 +10,8 @@ const Index = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Fixed Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
-        <div className="container mx-auto px-4 h-20 flex items-center justify-center">
-          <img src={logo} alt="Confirmei" className="h-14" />
+        <div className="container mx-auto px-4 h-28 flex items-center justify-center">
+          <img src={logo} alt="Confirmei" className="h-[70px]" />
         </div>
       </header>
 
