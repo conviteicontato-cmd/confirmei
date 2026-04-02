@@ -46,11 +46,8 @@ const SidebarContent = ({
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
-      <div className="p-6 border-b border-sidebar-border">
-        <h1 className="font-display text-xl font-bold" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
-          Organizador
-        </h1>
-        <p className="text-sm" style={{ color: 'hsl(var(--sidebar-foreground) / 0.6)' }}>Gestão de Eventos</p>
+      <div className="p-6 border-b border-sidebar-border flex items-center justify-center">
+        <img src={logo} alt="Confirmei" className="h-10 w-auto" />
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
