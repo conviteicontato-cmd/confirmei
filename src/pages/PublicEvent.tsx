@@ -273,30 +273,7 @@ const PublicEvent = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // Send webhook via secure edge function if configured
-      if (event?.webhook_url) {
-        try {
-          await supabase.functions.invoke('send-webhook', {
-            body: {
-              webhook_url: event.webhook_url,
-              payload: {
-                type: "guest_confirmed",
-                event_id: eventId,
-                event_name: event.name,
-                guest_id: selectedGuest.id,
-                guest_name: selectedGuest.name,
-                confirmed_adults: adults + 1,
-                confirmed_children: children,
-                children_ages: childrenAges,
-                timestamp: new Date().toISOString(),
-              },
-            },
-          });
-        } catch (webhookError) {
-          // Webhook failures are non-critical
-          console.error("Webhook error:", webhookError);
-        }
-      }
+      // Webhook is now handled server-side by the confirm-guest edge function
 
       setPageState("success");
     } catch (error: any) {
