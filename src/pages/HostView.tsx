@@ -82,7 +82,7 @@ const HostView = () => {
     }
     const check = async () => {
       const { data } = await supabase
-        .from("events")
+        .from("public_events")
         .select("id, name")
         .eq("id", eventId)
         .maybeSingle();

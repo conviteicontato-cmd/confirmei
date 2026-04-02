@@ -18,7 +18,6 @@ interface EventData {
   cover_image_url: string | null;
   primary_color: string | null;
   secondary_color: string | null;
-  webhook_url: string | null;
   confirmation_active: boolean | null;
   confirmation_deadline: string | null;
   auto_block: boolean | null;
@@ -137,7 +136,7 @@ const PublicEvent = () => {
         // Use the public_events view which excludes sensitive fields like host_email
          const { data, error } = await supabase
           .from("public_events")
-          .select("id, name, event_date, short_message, cover_image_url, primary_color, secondary_color, webhook_url, confirmation_active, confirmation_deadline, auto_block")
+          .select("id, name, event_date, short_message, cover_image_url, primary_color, secondary_color, confirmation_active, confirmation_deadline, auto_block")
           .eq("id", eventId)
           .maybeSingle();
 
@@ -274,30 +273,7 @@ const PublicEvent = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // Send webhook via secure edge function if configured
-      if (event?.webhook_url) {
-        try {
-          await supabase.functions.invoke('send-webhook', {
-            body: {
-              webhook_url: event.webhook_url,
-              payload: {
-                type: "guest_confirmed",
-                event_id: eventId,
-                event_name: event.name,
-                guest_id: selectedGuest.id,
-                guest_name: selectedGuest.name,
-                confirmed_adults: adults + 1,
-                confirmed_children: children,
-                children_ages: childrenAges,
-                timestamp: new Date().toISOString(),
-              },
-            },
-          });
-        } catch (webhookError) {
-          // Webhook failures are non-critical
-          console.error("Webhook error:", webhookError);
-        }
-      }
+      // Webhook is now handled server-side by the confirm-guest edge function
 
       setPageState("success");
     } catch (error: any) {

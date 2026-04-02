@@ -59,7 +59,7 @@ const PublicCheckin = () => {
     // Verify the code exists
     const checkCode = async () => {
       const { data, error } = await supabase
-        .from("events")
+        .from("public_events")
         .select("id, checkin_code")
         .eq("checkin_code", code)
         .maybeSingle();

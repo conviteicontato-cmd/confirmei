@@ -340,6 +340,7 @@ export type Database = {
       public_events: {
         Row: {
           auto_block: boolean | null
+          checkin_code: string | null
           confirmation_active: boolean | null
           confirmation_deadline: string | null
           cover_image_url: string | null
@@ -349,10 +350,10 @@ export type Database = {
           primary_color: string | null
           secondary_color: string | null
           short_message: string | null
-          webhook_url: string | null
         }
         Insert: {
           auto_block?: boolean | null
+          checkin_code?: string | null
           confirmation_active?: boolean | null
           confirmation_deadline?: string | null
           cover_image_url?: string | null
@@ -362,10 +363,10 @@ export type Database = {
           primary_color?: string | null
           secondary_color?: string | null
           short_message?: string | null
-          webhook_url?: string | null
         }
         Update: {
           auto_block?: boolean | null
+          checkin_code?: string | null
           confirmation_active?: boolean | null
           confirmation_deadline?: string | null
           cover_image_url?: string | null
@@ -375,7 +376,6 @@ export type Database = {
           primary_color?: string | null
           secondary_color?: string | null
           short_message?: string | null
-          webhook_url?: string | null
         }
         Relationships: []
       }
