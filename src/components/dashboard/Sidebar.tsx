@@ -70,7 +70,7 @@ const SidebarContent = ({
         {isSuperAdmin && (
           <button
             onClick={() => onNavigate("/admin")}
-            className="nav-item w-full mt-4 text-primary"
+            className="nav-item w-full mt-4"
           >
             <Shield className="h-5 w-5" />
             <span className="font-medium">Admin Panel</span>

@@ -598,6 +598,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
         eventId={eventId}
         eventName={event.name}
         currentPassword={event.host_password}
+        currentAllowEdit={event.allow_host_edit ?? false}
       />
     </div>
   );

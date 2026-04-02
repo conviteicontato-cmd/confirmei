@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -15,19 +16,23 @@ interface ShareHostModalProps {
   eventId: string;
   eventName: string;
   currentPassword: string | null;
+  currentAllowEdit: boolean;
 }
 
-const ShareHostModal = ({ open, onOpenChange, eventId, eventName, currentPassword }: ShareHostModalProps) => {
+const ShareHostModal = ({ open, onOpenChange, eventId, eventName, currentPassword, currentAllowEdit }: ShareHostModalProps) => {
   const [password, setPassword] = useState(currentPassword || "");
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [allowEdit, setAllowEdit] = useState(currentAllowEdit);
+  const [savingEdit, setSavingEdit] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
       setPassword(currentPassword || "");
+      setAllowEdit(currentAllowEdit);
     }
-  }, [open, currentPassword]);
+  }, [open, currentPassword, currentAllowEdit]);
 
   const hostUrl = `${window.location.origin}/evento/${eventId}/anfitriao`;
 
@@ -42,7 +47,7 @@ const ShareHostModal = ({ open, onOpenChange, eventId, eventName, currentPasswor
     try {
       const { error } = await supabase
         .from("events")
-        .update({ host_password: trimmed || null })
+        .update({ host_password: trimmed || null } as any)
         .eq("id", eventId);
 
       if (error) throw error;
@@ -51,6 +56,25 @@ const ShareHostModal = ({ open, onOpenChange, eventId, eventName, currentPasswor
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAllowEditChange = async (checked: boolean) => {
+    setAllowEdit(checked);
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from("events")
+        .update({ allow_host_edit: checked } as any)
+        .eq("id", eventId);
+
+      if (error) throw error;
+      toast({ title: checked ? "Edição habilitada" : "Edição desabilitada", description: checked ? "O anfitrião poderá adicionar e excluir convidados." : "O anfitrião terá acesso somente leitura." });
+    } catch (error: any) {
+      setAllowEdit(!checked);
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -74,7 +98,7 @@ const ShareHostModal = ({ open, onOpenChange, eventId, eventName, currentPasswor
             Compartilhar com Anfitrião
           </DialogTitle>
           <DialogDescription>
-            Compartilhe o link e a senha para que o anfitrião acompanhe as confirmações em tempo real (somente leitura).
+            Compartilhe o link e a senha para que o anfitrião acompanhe as confirmações em tempo real.
           </DialogDescription>
         </DialogHeader>
 
@@ -103,6 +127,18 @@ const ShareHostModal = ({ open, onOpenChange, eventId, eventName, currentPasswor
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               </Button>
             </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Permitir edição</Label>
+              <p className="text-xs text-muted-foreground">Permitir que o anfitrião adicione ou exclua convidados</p>
+            </div>
+            <Switch
+              checked={allowEdit}
+              onCheckedChange={handleAllowEditChange}
+              disabled={savingEdit}
+            />
           </div>
 
           <div className="space-y-2">

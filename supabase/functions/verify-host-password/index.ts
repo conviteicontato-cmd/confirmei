@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
     const { data: event, error } = await supabase
       .from('events')
-      .select('id, name, host_password, cover_image_url, primary_color, secondary_color')
+      .select('id, name, host_password, cover_image_url, primary_color, secondary_color, allow_host_edit')
       .eq('id', event_id)
       .single();
 
@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
         event_name: event.name,
         token: tokenPayload,
         expires_at: expiresAt,
+        allow_host_edit: event.allow_host_edit ?? false,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
