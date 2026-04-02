@@ -334,6 +334,7 @@ const HostView = () => {
                 open={!!editGuest}
                 onOpenChange={(open) => { if (!open) setEditGuest(null); }}
                 guest={editGuest}
+                eventId={eventId}
                 onSuccess={fetchGuests}
               />
             )}
