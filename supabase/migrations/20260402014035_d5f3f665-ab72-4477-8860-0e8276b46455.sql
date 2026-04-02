@@ -1,0 +1,1 @@
+ALTER TABLE public.events ADD COLUMN allow_host_edit boolean NOT NULL DEFAULT false;

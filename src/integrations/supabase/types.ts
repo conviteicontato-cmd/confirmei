@@ -49,6 +49,7 @@ export type Database = {
       }
       events: {
         Row: {
+          allow_host_edit: boolean
           auto_block: boolean
           checkin_code: string | null
           checkin_mode: string | null
@@ -71,6 +72,7 @@ export type Database = {
           webhook_url: string | null
         }
         Insert: {
+          allow_host_edit?: boolean
           auto_block?: boolean
           checkin_code?: string | null
           checkin_mode?: string | null
@@ -93,6 +95,7 @@ export type Database = {
           webhook_url?: string | null
         }
         Update: {
+          allow_host_edit?: boolean
           auto_block?: boolean
           checkin_code?: string | null
           checkin_mode?: string | null
