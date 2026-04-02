@@ -349,7 +349,6 @@ export type Database = {
           primary_color: string | null
           secondary_color: string | null
           short_message: string | null
-          webhook_url: string | null
         }
         Insert: {
           auto_block?: boolean | null
@@ -362,7 +361,6 @@ export type Database = {
           primary_color?: string | null
           secondary_color?: string | null
           short_message?: string | null
-          webhook_url?: string | null
         }
         Update: {
           auto_block?: boolean | null
@@ -375,7 +373,6 @@ export type Database = {
           primary_color?: string | null
           secondary_color?: string | null
           short_message?: string | null
-          webhook_url?: string | null
         }
         Relationships: []
       }
