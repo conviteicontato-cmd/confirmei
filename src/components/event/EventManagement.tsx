@@ -589,6 +589,15 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
         eventId={eventId}
         onSuccess={fetchEventData}
       />
+
+      {/* Share Host Modal */}
+      <ShareHostModal
+        open={shareHostOpen}
+        onOpenChange={setShareHostOpen}
+        eventId={eventId}
+        eventName={event.name}
+        currentPassword={event.host_password}
+      />
     </div>
   );
 };
