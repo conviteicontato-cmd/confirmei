@@ -19,6 +19,7 @@ import EventStatsCards from "./EventStatsCards";
 import GuestTable from "./GuestTable";
 import AddGuestModal from "./AddGuestModal";
 import EditGuestModal from "./EditGuestModal";
+import ShareHostModal from "./ShareHostModal";
 
 import { Json } from "@/integrations/supabase/types";
 
