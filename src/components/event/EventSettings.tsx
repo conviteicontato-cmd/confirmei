@@ -123,6 +123,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
       setCheckinCode(data.checkin_code || "");
       setWebhookUrl(data.webhook_url || "");
       setCheckinPassword((data as any).checkin_password || "");
+      setHostPassword((data as any).host_password || "");
       setConfirmationActive(data.confirmation_active !== false);
       setAutoBlock(data.auto_block || false);
       setConfirmationDeadline(data.confirmation_deadline ? data.confirmation_deadline.substring(0, 16) : "");
