@@ -1,63 +1,63 @@
 
 
-## Plano: Sidebar fix + Permissão de edição do Anfitrião + Filtros de status
+## Plano: Reformulação da Paleta de Cores
 
-### 1. Fix CSS do "Admin Panel" no Sidebar
+### Cores (Hex → HSL)
+- **Principal** `#4c0c14` → `350 75% 17%`
+- **Fundo** `#f8f5f0` → `37 38% 96%`
+- **Detalhes** `#ef86aa` → `340 78% 73%`
 
-**Arquivo:** `src/components/dashboard/Sidebar.tsx` (linha 73)
+### Alterações
 
-Remover `text-primary` da classe do botão Admin Panel. A classe `text-primary` do Tailwind é sobrescrita pela regra CSS do `.nav-item` que define `color` diretamente. Sem `text-primary`, o botão terá a mesma aparência dos demais itens.
+**Arquivo único: `src/index.css`**
 
-### 2. Migração SQL
+Atualizar todas as CSS variables em `:root`:
 
-```sql
-ALTER TABLE public.events ADD COLUMN allow_host_edit boolean NOT NULL DEFAULT false;
-```
+| Token | Valor Atual (azul/bege) | Novo Valor |
+|---|---|---|
+| `--background` | `30 23% 92%` | `37 38% 96%` (#f8f5f0) |
+| `--foreground` | `227 35% 26%` | `350 75% 17%` (#4c0c14) |
+| `--card` | `30 23% 92%` | `0 0% 100%` (branco, contraste com fundo) |
+| `--card-foreground` | `227 35% 26%` | `350 75% 17%` |
+| `--popover` | `0 0% 100%` | `0 0% 100%` (manter) |
+| `--popover-foreground` | `227 35% 26%` | `350 75% 17%` |
+| `--primary` | `227 35% 26%` | `350 75% 17%` (#4c0c14) |
+| `--primary-foreground` | `30 23% 92%` | `37 38% 96%` (#f8f5f0) |
+| `--secondary` | `26 12% 72%` | `340 78% 73%` (#ef86aa) |
+| `--secondary-foreground` | `227 35% 26%` | `0 0% 100%` (branco) |
+| `--muted` | `26 12% 78%` | `340 30% 92%` (rosa suave) |
+| `--muted-foreground` | `227 20% 45%` | `350 30% 40%` |
+| `--accent` | `26 15% 85%` | `340 40% 90%` (rosa claro) |
+| `--accent-foreground` | `227 35% 26%` | `350 75% 17%` |
+| `--destructive` | manter vermelho | manter |
+| `--border` | `26 12% 80%` | `340 20% 85%` |
+| `--input` | `26 12% 80%` | `340 20% 85%` |
+| `--ring` | `227 35% 26%` | `340 78% 73%` (#ef86aa para ring/foco) |
+| `--sidebar-background` | `227 35% 26%` | `350 75% 17%` (#4c0c14) |
+| `--sidebar-foreground` | `30 23% 92%` | `37 38% 96%` (#f8f5f0) |
+| `--sidebar-accent` | `227 30% 38%` | `350 60% 25%` |
+| `--sidebar-accent-foreground` | `0 0% 100%` | `0 0% 100%` |
+| `--sidebar-border` | `227 25% 32%` | `350 50% 22%` |
+| `--sidebar-ring` | `30 23% 92%` | `37 38% 96%` |
+| `--sidebar-primary` | `30 23% 92%` | `37 38% 96%` |
+| `--sidebar-primary-foreground` | `227 35% 26%` | `350 75% 17%` |
 
-### 3. ShareHostModal — Toggle de permissão
+Atualizar gradientes e sombras para usar `350 75% 17%` em vez de `227 35% 26%`.
 
-**Arquivo:** `src/components/event/ShareHostModal.tsx`
+Atualizar também o tema `.dark` com variantes equivalentes.
 
-- Adicionar prop `currentAllowEdit: boolean`
-- Adicionar um Switch com label "Permitir que o anfitrião adicione ou exclua convidados"
-- Ao alternar, salvar `allow_host_edit` no banco via `supabase.from("events").update()`
+Atualizar comentários do cabeçalho para refletir a nova paleta (Convitei: #4c0c14 / #f8f5f0 / #ef86aa).
 
-**Arquivo:** `src/components/event/EventManagement.tsx`
+**Botão hover rosa:** Adicionar variante no `buttonVariants` em `src/components/ui/button.tsx` — trocar o hover do variant `default` de `hover:bg-primary/90` para `hover:bg-[hsl(340,78%,73%)]` (rosa #ef86aa).
 
-- Adicionar `allow_host_edit` ao tipo `Event` (linha 38-40)
-- Passar `currentAllowEdit={event.allow_host_edit}` ao `ShareHostModal`
+**Logo:** Copiar `Logotipo_Fundo_Tranparente.png` para `src/assets/` e usar no Sidebar em vez do texto "Organizador" / "Convitei".
 
-### 4. GuestTableReadOnly — Filtro de status
-
-**Arquivo:** `src/components/event/GuestTableReadOnly.tsx`
-
-- Adicionar estado `statusFilter` com opções: "Todos", "Confirmados", "Pendentes", "Check-in"
-- Adicionar Select dropdown ao lado dos filtros existentes
-- Aplicar no `filteredGuests`: filtrar por `status === "confirmed"`, `status === "pending"`, ou `checkin_done === true`
-
-### 5. HostView — Modo edição condicional
-
-**Arquivo:** `src/pages/HostView.tsx`
-
-- Buscar `allow_host_edit` do evento após autenticação
-- Se `true`: renderizar `GuestTable` + botão "+ Convidado" + `AddGuestModal` + `EditGuestModal`
-- Se `false`: renderizar `GuestTableReadOnly` (leitura)
-- Adicionar filtro de status ao `GuestTableReadOnly` (já implementado no passo 4)
-
-**Arquivo:** `supabase/functions/verify-host-password/index.ts`
-
-- Adicionar `allow_host_edit` ao select (linha 31)
-- Incluir `allow_host_edit` no retorno JSON de sucesso
-
-### Arquivos a modificar
+### Arquivos
 
 | Arquivo | Ação |
 |---|---|
-| Migração SQL | `ADD COLUMN allow_host_edit` |
-| `src/components/dashboard/Sidebar.tsx` | Remover `text-primary` (1 linha) |
-| `src/components/event/ShareHostModal.tsx` | Adicionar Switch allow_host_edit |
-| `src/components/event/EventManagement.tsx` | Tipo Event + prop ao modal |
-| `src/components/event/GuestTableReadOnly.tsx` | Adicionar filtro status |
-| `src/pages/HostView.tsx` | Lógica condicional edição vs leitura |
-| `supabase/functions/verify-host-password/index.ts` | Retornar allow_host_edit |
+| `src/index.css` | Atualizar todas as CSS variables |
+| `src/components/ui/button.tsx` | Hover rosa no variant default |
+| `src/assets/Logotipo_Fundo_Tranparente.png` | Copiar logo |
+| `src/components/dashboard/Sidebar.tsx` | Usar logo no header |
 
