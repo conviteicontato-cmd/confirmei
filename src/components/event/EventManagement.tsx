@@ -77,6 +77,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
   const [loading, setLoading] = useState(true);
   const [addGuestOpen, setAddGuestOpen] = useState(false);
   const [editGuest, setEditGuest] = useState<Guest | null>(null);
+  const [shareHostOpen, setShareHostOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
