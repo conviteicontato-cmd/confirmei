@@ -1,77 +1,96 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Calendar, Users, QrCode, ArrowRight } from "lucide-react";
+import logo from "@/assets/Logotipo_Fundo_Tranparente.png";
 
 const Index = () => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Fixed Header */}
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img src={logo} alt="Confirmei" className="h-8" />
+            <span className="text-xl font-display font-bold text-foreground">Confirmei</span>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/auth")}
+            className="rounded-full px-6"
+          >
+            Entrar
+          </Button>
+        </div>
+      </header>
+
       {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
-        <div className="container mx-auto px-4 py-12 lg:py-20 relative">
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/10" />
+        <div className="container mx-auto px-4 py-20 lg:py-32 relative">
           <div className="max-w-3xl mx-auto text-center animate-slide-up">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-foreground mb-4 lg:mb-6">
-              Convitei
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-foreground mb-6 leading-tight">
+              Gerencie seus convidados{" "}
+              <span className="text-secondary">sem dor de cabeça.</span>
             </h1>
-            <p className="text-lg lg:text-xl text-muted-foreground mb-6 lg:mb-8 max-w-xl mx-auto px-4">
-              A plataforma completa para gerenciar seus eventos, confirmações de presença e check-in com QR Code.
+            <p className="text-lg lg:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
+              Confirmação de presença, controle de convidados e check-in com QR Code. Tudo em um só lugar.
             </p>
             <Button
               onClick={() => navigate("/auth")}
-              className="btn-gold rounded-full px-6 lg:px-8 py-5 lg:py-6 text-base lg:text-lg"
+              className="btn-gold rounded-full px-8 py-6 text-lg shadow-gold"
             >
-              Começar agora
+              Criar meu evento
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Features Section */}
-      <div className="container mx-auto px-4 py-12 lg:py-20">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-8">
+      <section className="container mx-auto px-4 py-16 lg:py-24">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           <FeatureCard
             icon={Calendar}
             title="Crie Eventos"
-            description="Configure seus eventos com foto de capa, cores personalizadas e mensagens especiais."
+            description="Monte seu evento com identidade, capa e configurações personalizadas."
           />
           <FeatureCard
             icon={Users}
             title="Gerencie Convidados"
-            description="Adicione convidados, defina limites de acompanhantes e acompanhe confirmações em tempo real."
+            description="Controle confirmações, acompanhantes e lista em tempo real."
           />
           <FeatureCard
             icon={QrCode}
-            title="Check-in por QR Code"
-            description="Cada convidado recebe um QR Code único para check-in rápido e seguro no dia do evento."
+            title="Check-in com QR Code"
+            description="Entrada rápida, sem fila e sem bagunça."
           />
         </div>
-      </div>
+      </section>
 
       {/* CTA Section */}
-      <div className="container mx-auto px-4 pb-12 lg:pb-20">
-        <div className="card-elegant p-8 lg:p-12 text-center bg-gradient-to-br from-primary/5 to-primary/10">
+      <section className="container mx-auto px-4 pb-16 lg:pb-24">
+        <div className="card-elegant p-10 lg:p-16 text-center bg-gradient-to-br from-primary/5 to-secondary/10">
           <h2 className="text-2xl lg:text-3xl font-display font-bold text-foreground mb-4">
             Pronto para começar?
           </h2>
-          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+          <p className="text-muted-foreground mb-8 max-w-md mx-auto">
             Crie sua conta gratuita e comece a organizar seus eventos hoje mesmo.
           </p>
           <Button
             onClick={() => navigate("/auth")}
-            className="btn-gold rounded-full px-8"
+            className="btn-gold rounded-full px-8 py-5"
           >
             Criar conta grátis
           </Button>
         </div>
-      </div>
+      </section>
 
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          © 2027 Convitei. Todos os direitos reservados.
+          © 2027 Confirmei. Todos os direitos reservados.
         </div>
       </footer>
     </div>
@@ -87,14 +106,14 @@ const FeatureCard = ({
   title: string;
   description: string;
 }) => (
-  <div className="card-elegant p-5 lg:p-6 text-center hover:shadow-lg transition-all duration-300">
-    <div className="inline-flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-xl bg-primary/10 text-primary mb-3 lg:mb-4">
-      <Icon className="h-6 w-6 lg:h-7 lg:w-7" />
+  <div className="card-elegant p-6 lg:p-8 text-center hover:shadow-elegant-lg hover:-translate-y-1 transition-all duration-300">
+    <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-secondary/15 text-primary mb-4">
+      <Icon className="h-7 w-7" />
     </div>
-    <h3 className="text-base lg:text-lg font-display font-semibold text-foreground mb-2">
+    <h3 className="text-lg font-display font-semibold text-foreground mb-2">
       {title}
     </h3>
-    <p className="text-muted-foreground text-sm">{description}</p>
+    <p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
   </div>
 );
 
