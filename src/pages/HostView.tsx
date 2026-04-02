@@ -306,13 +306,12 @@ const HostView = () => {
                 <Progress value={progressPercent} className="h-3" />
               </div>
 
-              {allowHostEdit ? (
+              {allowHostEdit && eventId ? (
                 <GuestTable
                   guests={guests}
+                  eventId={eventId}
+                  onRefresh={fetchGuests}
                   onEdit={(guest) => setEditGuest(guest)}
-                  onDelete={handleDeleteGuest}
-                  onResetStatus={() => {}}
-                  onResendWebhook={() => {}}
                   webhookUrl={null}
                 />
               ) : (
