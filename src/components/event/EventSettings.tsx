@@ -191,6 +191,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
           email_notifications: emailNotifications,
           checkin_mode: checkinMode,
           checkin_password: checkinPassword.trim() || null,
+          host_password: hostPassword.trim() || null,
           webhook_url: webhookUrl.trim() || null,
           confirmation_active: confirmationActive,
           auto_block: autoBlock,
