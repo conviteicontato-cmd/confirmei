@@ -14,30 +14,30 @@
 
 @layer base {
   :root {
-    /* Core palette - Cream / Beige / Deep Ocean */
-    --background: 30 23% 92%;
-    --foreground: 227 35% 26%;
+    /* Core palette - Wine / Cream / Pink */
+    --background: 37 38% 96%;
+    --foreground: 350 75% 17%;
 
-    --card: 30 23% 92%;
-    --card-foreground: 227 35% 26%;
+    --card: 0 0% 100%;
+    --card-foreground: 350 75% 17%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 227 35% 26%;
+    --popover-foreground: 350 75% 17%;
 
-    /* Primary: Deep Ocean #2C365A */
-    --primary: 227 35% 26%;
-    --primary-foreground: 30 23% 92%;
+    /* Primary: Wine #4c0c14 */
+    --primary: 350 75% 17%;
+    --primary-foreground: 37 38% 96%;
 
-    /* Secondary: Beige #C4BCB0 */
-    --secondary: 26 12% 72%;
-    --secondary-foreground: 227 35% 26%;
+    /* Secondary: Pink #ef86aa */
+    --secondary: 340 78% 73%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 26 12% 78%;
-    --muted-foreground: 227 20% 45%;
+    --muted: 340 30% 92%;
+    --muted-foreground: 350 30% 40%;
 
-    /* Accent: Light Beige tint */
-    --accent: 26 15% 85%;
-    --accent-foreground: 227 35% 26%;
+    /* Accent: Light pink tint */
+    --accent: 340 40% 90%;
+    --accent-foreground: 350 75% 17%;
 
     /* Success: Soft green */
     --success: 145 40% 45%;
@@ -52,32 +52,32 @@
     --destructive: 0 55% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 26 12% 80%;
-    --input: 26 12% 80%;
-    --ring: 227 35% 26%;
+    --border: 340 20% 85%;
+    --input: 340 20% 85%;
+    --ring: 340 78% 73%;
 
     --radius: 0.75rem;
 
-    /* Sidebar - Deep Ocean background */
-    --sidebar-background: 227 35% 26%;
-    --sidebar-foreground: 30 23% 92%;
-    --sidebar-primary: 30 23% 92%;
-    --sidebar-primary-foreground: 227 35% 26%;
-    --sidebar-accent: 227 30% 38%;
+    /* Sidebar - Wine background */
+    --sidebar-background: 350 75% 17%;
+    --sidebar-foreground: 37 38% 96%;
+    --sidebar-primary: 37 38% 96%;
+    --sidebar-primary-foreground: 350 75% 17%;
+    --sidebar-accent: 350 60% 25%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 227 25% 32%;
-    --sidebar-ring: 30 23% 92%;
+    --sidebar-border: 350 50% 22%;
+    --sidebar-ring: 37 38% 96%;
 
     /* Gradients */
-    --gradient-gold: linear-gradient(135deg, hsl(227, 35%, 26%) 0%, hsl(227, 30%, 35%) 100%);
-    --gradient-gold-soft: linear-gradient(135deg, hsl(227, 35%, 30%) 0%, hsl(227, 25%, 40%) 100%);
-    --gradient-cream: linear-gradient(180deg, hsl(30, 23%, 92%) 0%, hsl(26, 15%, 85%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(350, 75%, 17%) 0%, hsl(350, 60%, 25%) 100%);
+    --gradient-gold-soft: linear-gradient(135deg, hsl(350, 75%, 20%) 0%, hsl(350, 50%, 30%) 100%);
+    --gradient-cream: linear-gradient(180deg, hsl(37, 38%, 96%) 0%, hsl(340, 40%, 90%) 100%);
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(227, 35%, 26%, 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(227, 35%, 26%, 0.07), 0 2px 4px -2px hsl(227, 35%, 26%, 0.05);
-    --shadow-lg: 0 10px 15px -3px hsl(227, 35%, 26%, 0.08), 0 4px 6px -4px hsl(227, 35%, 26%, 0.05);
-    --shadow-gold: 0 4px 14px 0 hsl(227, 35%, 26%, 0.25);
+    --shadow-sm: 0 1px 2px 0 hsl(350, 75%, 17%, 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(350, 75%, 17%, 0.07), 0 2px 4px -2px hsl(350, 75%, 17%, 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(350, 75%, 17%, 0.08), 0 4px 6px -4px hsl(350, 75%, 17%, 0.05);
+    --shadow-gold: 0 4px 14px 0 hsl(350, 75%, 17%, 0.25);
   }
 
   .dark {
