@@ -18,7 +18,6 @@ interface EventData {
   cover_image_url: string | null;
   primary_color: string | null;
   secondary_color: string | null;
-  webhook_url: string | null;
   confirmation_active: boolean | null;
   confirmation_deadline: string | null;
   auto_block: boolean | null;
