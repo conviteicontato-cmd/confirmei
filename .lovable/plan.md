@@ -1,89 +1,60 @@
+## Plano: Sidebar fix + Permissão de edição do Anfitrião + Filtros de status
 
+### 1. Fix CSS do "Admin Panel" no Sidebar
 
-## Plano: Visão do Anfitrião (Read-Only)
+**Arquivo:** `src/components/dashboard/Sidebar.tsx` (linha 73)
 
-### Resumo
+O botão usa `className="nav-item w-full mt-4 text-primary"`. A classe `text-primary` é sobrescrita pelo `color` inline do `.nav-item` no CSS (`color: hsl(var(--sidebar-foreground) / 0.7)`). O `text-primary` do Tailwind não vence a regra CSS direta.
 
-Criar uma funcionalidade que permite ao organizador compartilhar um link protegido por senha com o anfitrião (ex: noiva), onde ele vê stats e lista de convidados sem poder editar nada.
+**Correção:** Remover `text-primary` e usar a mesma classe dos outros itens. Resultado: visível como os demais.
 
----
-
-### 1. Migração de Banco
-
-Adicionar coluna `host_password` (text, nullable) na tabela `events`.
+### 2. Migração: `allow_host_edit`
 
 ```sql
-ALTER TABLE public.events ADD COLUMN host_password text;
+ALTER TABLE public.events ADD COLUMN allow_host_edit boolean NOT NULL DEFAULT false;
 ```
 
-### 2. Edge Function `verify-host-password`
+### 3. Toggle no `ShareHostModal`
 
-Similar à `verify-checkin-password` existente:
-- Recebe `event_id` + `password`
-- Busca evento por ID
-- Se não tem `host_password` definida: erro 403
-- Compara senha; se correta: retorna token de sessão (8h) + dados do evento
-- Se incorreta: erro 401
+**Arquivo:** `src/components/event/ShareHostModal.tsx`
 
-### 3. Nova Rota e Página `HostView`
+- Adicionar prop `currentAllowEdit: boolean` e callback `onAllowEditChange`
+- Adicionar Switch/Checkbox com label "Permitir que o anfitrião adicione ou exclua convidados"
+- Ao alternar, fazer `supabase.from("events").update({ allow_host_edit })` direto
 
-**Rota:** `/evento/:eventId/anfitriao` no `App.tsx`
+**Arquivo:** `src/components/event/EventManagement.tsx`
 
-**Página `src/pages/HostView.tsx`:**
-- Estados: `loading` → `login` → `authenticated`
-- Tela de login: design minimalista (logo/nome evento + campo senha + botão "Acessar")
-- Sessão em localStorage (8h), mesma lógica do `PublicCheckin`
-- Botão "Sair"
+- Incluir `allow_host_edit` no select do evento
+- Passar para o ShareHostModal
 
-**Após autenticação:**
-- Fetch dos guests via edge function (ou query pública, já que `guests` tem SELECT público)
-- Renderiza:
-  - `EventStatsCards` (reutilizado) — Total, Confirmados, Pendentes, Pessoas Esperadas, Check-ins
-  - Barra de progresso (confirmados / total)
-  - Tabela/lista de convidados read-only (novo componente `GuestTableReadOnly`)
-    - Busca e filtro por grupo (reutilizado)
-    - Sem coluna "Ações", sem botões Editar/Excluir/Redefinir
-    - Sem dropdown de ações no mobile
-- **Oculto:** botões + Convidado, Importar CSV, Exportar CSV, qualquer ação de edição
+### 4. Filtro de status no `GuestTableReadOnly`
 
-### 4. Componente `GuestTableReadOnly`
+**Arquivo:** `src/components/event/GuestTableReadOnly.tsx`
 
-Versão simplificada do `GuestTable` existente:
-- Mantém: busca, filtro por grupo, badges de status, obs tooltip
-- Remove: todas as ações (editar, excluir, redefinir, reenviar webhook)
-- Remove: coluna "Ações" na tabela desktop
-- Remove: dropdown no card mobile
+- Adicionar dropdown de filtro por status: "Todos", "Confirmados", "Pendentes", "Check-in"
+- Aplicar no `filteredGuests` junto com search e group filter
 
-### 5. Modal "Compartilhar com Anfitrião"
+### 5. Modo edição condicional no `HostView`
 
-No `EventManagement.tsx`, adicionar botão "Compartilhar com Anfitrião" ao lado do "Ver Página":
+**Arquivo:** `src/pages/HostView.tsx`
 
-**Componente `ShareHostModal`:**
-- Campo para definir/atualizar senha do anfitrião (4-6 dígitos)
-- Exibe link gerado: `{origin}/evento/{eventId}/anfitriao`
-- Botão "Copiar Link e Senha" → copia texto formatado para clipboard:
-  ```
-  Acompanhe as confirmações do evento:
-  Link: https://...
-  Senha: 1234
-  ```
-- Salva `host_password` no evento via `supabase.from("events").update()`
+- Buscar `allow_host_edit` do evento após autenticação
+- Se `true`: renderizar `GuestTable` (completo, com ações) + botão "+ Convidado" + `AddGuestModal` + `EditGuestModal`
+- Se `false`: renderizar `GuestTableReadOnly` (atual, sem ações)
+- A edge function `verify-host-password` já retorna dados do evento; adicionar `allow_host_edit` na resposta
 
-### 6. Configuração do `EventSettings`
+**Arquivo:** `supabase/functions/verify-host-password/index.ts`
 
-Adicionar campo "Senha do Anfitrião" na seção de configurações, similar ao campo de senha de check-in já existente.
+- Incluir `allow_host_edit` no retorno após autenticação bem-sucedida
 
----
-
-### Arquivos
+### Arquivos a editar
 
 | Arquivo | Ação |
 |---|---|
-| Migração SQL | `ADD COLUMN host_password` |
-| `supabase/functions/verify-host-password/index.ts` | Criar |
-| `src/pages/HostView.tsx` | Criar |
-| `src/components/event/GuestTableReadOnly.tsx` | Criar |
-| `src/components/event/ShareHostModal.tsx` | Criar |
-| `src/components/event/EventManagement.tsx` | Editar (adicionar botão) |
-| `src/App.tsx` | Editar (nova rota) |
-
+| Migração SQL | ADD COLUMN `allow_host_edit` |
+| `src/components/dashboard/Sidebar.tsx` | Fix classe CSS (1 linha) |
+| `src/components/event/ShareHostModal.tsx` | Adicionar toggle allow_host_edit |
+| `src/components/event/EventManagement.tsx` | Passar allow_host_edit ao modal |
+| `src/components/event/GuestTableReadOnly.tsx` | Adicionar filtro de status |
+| `src/pages/HostView.tsx` | Lógica condicional read-only vs edição |
+| `supabase/functions/verify-host-password/index.ts` | Retornar allow_host_edit |
