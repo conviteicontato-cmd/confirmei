@@ -36,6 +36,7 @@ interface Event {
   primary_color: string;
   secondary_color: string;
   webhook_url: string | null;
+  host_password: string | null;
 }
 
 export interface Guest {
