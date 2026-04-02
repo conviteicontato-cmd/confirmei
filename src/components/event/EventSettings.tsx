@@ -92,6 +92,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
   const [checkinCode, setCheckinCode] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [checkinPassword, setCheckinPassword] = useState("");
+  const [hostPassword, setHostPassword] = useState("");
   const [confirmationActive, setConfirmationActive] = useState(true);
   const [autoBlock, setAutoBlock] = useState(false);
   const [confirmationDeadline, setConfirmationDeadline] = useState("");
