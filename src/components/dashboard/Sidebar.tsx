@@ -117,9 +117,7 @@ const Sidebar = ({ user, activeSection = "painel" }: SidebarProps) => {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar border-b border-sidebar-border">
         <div className="flex items-center justify-between p-4">
-          <h1 className="font-display text-lg font-bold" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
-            Organizador
-          </h1>
+          <img src={logo} alt="Confirmei" className="h-8 w-auto" />
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px]" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
