@@ -449,9 +449,19 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
       const maxChildrenRaw = findValue(row, ["max criancas", "criancas"]);
       const observations = sanitizeCSVValue(findValue(row, ["observacoes", "observacao", "obs"])) || null;
       const groupName = sanitizeCSVValue(findValue(row, ["grupo/familia", "grupo", "familia"])) || null;
+      const whatsappRaw = findValue(row, ["whatsapp", "telefone", "phone", "celular"]);
 
       const maxAdults = parseNumericValue(maxAdultsRaw) || 1;
       const maxChildren = parseNumericValue(maxChildrenRaw);
+
+      // Normalize WhatsApp: keep only digits and +
+      let whatsapp: string | null = null;
+      if (whatsappRaw) {
+        const cleaned = whatsappRaw.replace(/[^0-9+]/g, "");
+        if (cleaned.length >= 8) {
+          whatsapp = cleaned.startsWith("+") ? cleaned : "+" + cleaned;
+        }
+      }
 
       const { error } = await supabase.from("guests").insert({
         event_id: eventId,
@@ -463,6 +473,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
         confirmed_children: 0,
         observations,
         group_name: groupName,
+        whatsapp,
       });
 
       if (error) {
