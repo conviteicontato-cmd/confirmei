@@ -36,6 +36,15 @@ interface GuestData {
   whatsapp: string | null;
 }
 
+interface Participant {
+  id: string;
+  name: string | null;
+  type: string;
+  age: string | null;
+  qr_code: string;
+  checked_in_at: string | null;
+}
+
 type PageState = "search" | "confirm" | "whatsapp" | "success";
 
 const PublicEvent = () => {
@@ -57,6 +66,8 @@ const PublicEvent = () => {
   const [childrenNames, setChildrenNames] = useState<string[]>([]);
   const [whatsappInput, setWhatsappInput] = useState("");
   const [whatsappConfirmed, setWhatsappConfirmed] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [participants, setParticipants] = useState<Participant[]>([]);
 
   const { toast } = useToast();
 
@@ -187,12 +198,22 @@ const PublicEvent = () => {
     (event.auto_block === true && event.confirmation_deadline && new Date() > new Date(event.confirmation_deadline))
   ) : false;
 
+  const fetchParticipants = async (guestId: string) => {
+    const { data } = await supabase
+      .from("guest_participants")
+      .select("id, name, type, age, qr_code, checked_in_at")
+      .eq("guest_id", guestId)
+      .order("type");
+    setParticipants(data || []);
+  };
+
   const handleSelectGuest = (guest: GuestData) => {
     setSelectedGuest(guest);
-    // If guest already confirmed, go straight to success screen
+    setValidationErrors({});
     if (guest.status === 'confirmed') {
       setAdults((guest.confirmed_adults || 1) - 1);
       setChildren(guest.confirmed_children || 0);
+      fetchParticipants(guest.id);
       setPageState("success");
       return;
     }
@@ -201,6 +222,7 @@ const PublicEvent = () => {
     setChildrenAges([]);
     setCompanionNames([]);
     setChildrenNames([]);
+    setParticipants([]);
     setPageState("confirm");
   };
 
@@ -256,7 +278,29 @@ const PublicEvent = () => {
   };
 
   const handleProceedToWhatsApp = () => {
-    // After filling confirmation details, go to WhatsApp step
+    // Validate companion names
+    const errors: Record<string, string> = {};
+    for (let i = 0; i < adults; i++) {
+      if (!companionNames[i]?.trim()) {
+        errors[`companion_${i}`] = "Informe o nome do acompanhante.";
+      }
+    }
+    for (let i = 0; i < children; i++) {
+      if (!childrenNames[i]?.trim()) {
+        errors[`child_name_${i}`] = "Informe o nome da criança.";
+      }
+      if (!childrenAges[i]?.trim()) {
+        errors[`child_age_${i}`] = "Informe a idade da criança.";
+      } else {
+        const ageNum = parseInt(childrenAges[i], 10);
+        if (isNaN(ageNum) || ageNum < 0 || ageNum > 17) {
+          errors[`child_age_${i}`] = "Idade inválida (0-17).";
+        }
+      }
+    }
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     if (selectedGuest?.whatsapp) {
       setWhatsappInput(selectedGuest.whatsapp);
       setWhatsappConfirmed(false);
@@ -298,6 +342,8 @@ const PublicEvent = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
+      // Fetch individual participants with QR codes
+      await fetchParticipants(selectedGuest.id);
       setPageState("success");
     } catch (error: any) {
       toast({
@@ -521,15 +567,20 @@ const PublicEvent = () => {
                         Informe o nome de cada acompanhante
                       </p>
                       {companionNames.map((name, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <span className="text-sm text-muted-foreground w-28">Acompanhante {index + 1}:</span>
-                          <Input
-                            value={name}
-                            onChange={(e) => handleCompanionNameChange(index, e.target.value)}
-                            placeholder="Nome completo"
-                            className="flex-1"
-                            maxLength={100}
-                          />
+                        <div key={index} className="space-y-1">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-muted-foreground w-28">Acompanhante {index + 1}:</span>
+                            <Input
+                              value={name}
+                              onChange={(e) => handleCompanionNameChange(index, e.target.value)}
+                              placeholder="Nome completo"
+                              className={`flex-1 ${validationErrors[`companion_${index}`] ? "border-red-500" : ""}`}
+                              maxLength={100}
+                            />
+                          </div>
+                          {validationErrors[`companion_${index}`] && (
+                            <p className="text-xs text-red-500 ml-[7.5rem]">{validationErrors[`companion_${index}`]}</p>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -593,20 +644,33 @@ const PublicEvent = () => {
                   {childrenNames.map((name, index) => (
                     <div key={index} className="space-y-2">
                       <span className="text-sm font-medium text-foreground">Criança {index + 1}</span>
-                      <Input
-                        value={name}
-                        onChange={(e) => handleChildNameChange(index, e.target.value)}
-                        placeholder="Nome da criança"
-                        className="w-full"
-                        maxLength={100}
-                      />
-                      <Input
-                        value={childrenAges[index] || ""}
-                        onChange={(e) => handleChildAgeChange(index, e.target.value)}
-                        placeholder="Ex: 5 anos"
-                        className="w-full"
-                        maxLength={20}
-                      />
+                      <div>
+                        <Input
+                          value={name}
+                          onChange={(e) => handleChildNameChange(index, e.target.value)}
+                          placeholder="Nome da criança"
+                          className={`w-full ${validationErrors[`child_name_${index}`] ? "border-red-500" : ""}`}
+                          maxLength={100}
+                        />
+                        {validationErrors[`child_name_${index}`] && (
+                          <p className="text-xs text-red-500 mt-1">{validationErrors[`child_name_${index}`]}</p>
+                        )}
+                      </div>
+                      <div>
+                        <Input
+                          value={childrenAges[index] || ""}
+                          onChange={(e) => handleChildAgeChange(index, e.target.value)}
+                          placeholder="Idade (ex: 5)"
+                          className={`w-full ${validationErrors[`child_age_${index}`] ? "border-red-500" : ""}`}
+                          maxLength={2}
+                          type="number"
+                          min="0"
+                          max="17"
+                        />
+                        {validationErrors[`child_age_${index}`] && (
+                          <p className="text-xs text-red-500 mt-1">{validationErrors[`child_age_${index}`]}</p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -718,72 +782,90 @@ const PublicEvent = () => {
               <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
             
-             <div>
+            <div>
               <h2 className="text-2xl font-display font-bold text-foreground mb-2">
                 {selectedGuest.confirmed_at ? "Sua presença já foi registrada" : "Presença Confirmada!"}
               </h2>
               <p className="text-muted-foreground">
-                Apresente este QR Code na entrada do evento
+                {participants.length > 1
+                  ? `Apresente os ${participants.length} QR Codes na entrada do evento`
+                  : "Apresente este QR Code na entrada do evento"}
               </p>
             </div>
 
-            {/* QR Code Card */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 space-y-4">
-              <div className="text-center">
-                <h3 className="font-display font-bold text-lg text-foreground">
-                  {event.name}
-                </h3>
-                <p className="text-sm text-muted-foreground">{formattedDate}</p>
-              </div>
-
-              {/* QR Code */}
-               <div ref={qrRef} className="flex justify-center py-4 bg-white">
-                 <QRCodeCanvas
-                  value={selectedGuest.qr_code || selectedGuest.id}
-                  size={180}
-                  level="H"
-                  includeMargin={true}
-                   bgColor="#ffffff"
-                />
-              </div>
-
-              {/* Guest Info */}
-              <div className="text-left border-t pt-4">
-                <p className="font-medium text-foreground">{selectedGuest.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {adults + 1} adulto{adults + 1 > 1 ? "s" : ""}
-                </p>
-                {children > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    {children} criança{children > 1 ? "s" : ""}
-                  </p>
-                )}
-              </div>
+            {/* Event Info */}
+            <div className="text-center">
+              <h3 className="font-display font-bold text-lg text-foreground">
+                {event.name}
+              </h3>
+              <p className="text-sm text-muted-foreground">{formattedDate}</p>
             </div>
+
+            {/* Individual QR Codes */}
+            {participants.length > 0 ? (
+              <div className="space-y-4">
+                {participants.map((participant) => (
+                  <div key={participant.id} className="bg-white rounded-2xl shadow-lg p-5 space-y-3">
+                    <div className="flex justify-center py-3 bg-white">
+                      <QRCodeCanvas
+                        value={participant.qr_code}
+                        size={160}
+                        level="H"
+                        includeMargin={true}
+                        bgColor="#ffffff"
+                      />
+                    </div>
+                    <div className="text-center border-t pt-3">
+                      <p className="font-medium text-foreground text-lg">
+                        {participant.name || "Participante"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {participant.type === "main" ? "Convidado Principal" : participant.type === "adult" ? "Acompanhante" : "Criança"}
+                        {participant.age ? ` — ${participant.age} anos` : ""}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Fallback: single QR code from guest record */
+              <div className="bg-white rounded-2xl shadow-lg p-6 space-y-4">
+                <div ref={qrRef} className="flex justify-center py-4 bg-white">
+                  <QRCodeCanvas
+                    value={selectedGuest.qr_code || selectedGuest.id}
+                    size={180}
+                    level="H"
+                    includeMargin={true}
+                    bgColor="#ffffff"
+                  />
+                </div>
+                <div className="text-left border-t pt-4">
+                  <p className="font-medium text-foreground">{selectedGuest.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {adults + 1} adulto{adults + 1 > 1 ? "s" : ""}
+                  </p>
+                  {children > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      {children} criança{children > 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Save hint */}
             <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-               💡 Salve o QR Code para apresentar na entrada
+              💡 Salve os QR Codes para apresentar na entrada
             </p>
 
-             {/* Download Button */}
+            {/* Share Button */}
             <Button
-               className="w-full h-14 text-lg rounded-xl text-white"
-               style={{ backgroundColor: primaryColor }}
-               onClick={downloadQRCode}
+              variant="outline"
+              className="w-full h-12 text-base rounded-xl"
+              onClick={shareQRCode}
             >
-               <Download className="h-5 w-5 mr-2" />
-               Salvar QR Code
-             </Button>
-
-             {/* Share Button */}
-             <Button
-               variant="outline"
-               className="w-full h-12 text-base rounded-xl"
-               onClick={shareQRCode}
-             >
               <Share2 className="h-5 w-5 mr-2" />
-               Compartilhar
+              Compartilhar
             </Button>
           </div>
         )}
