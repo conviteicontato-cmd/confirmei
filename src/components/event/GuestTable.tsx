@@ -44,9 +44,18 @@ import { Search, Pencil, Trash2, RotateCcw, Send, Clock, QrCode, CheckCircle, Me
 import { Json } from "@/integrations/supabase/types";
 import type { Guest } from "./EventManagement";
 
+interface WhatsAppTemplate {
+  id: string;
+  template_type: string;
+  title: string;
+  message_body: string;
+}
+
 interface GuestTableProps {
   guests: Guest[];
   eventId: string;
+  eventName?: string;
+  eventDate?: string;
   webhookUrl?: string | null;
   onRefresh: () => void;
   onEdit?: (guest: Guest) => void;
@@ -61,7 +70,7 @@ interface GroupStats {
   checkedIn: number;
 }
 
-const GuestTable = ({ guests, eventId, webhookUrl, onRefresh, onEdit }: GuestTableProps) => {
+const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefresh, onEdit }: GuestTableProps) => {
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("__all__");
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -69,7 +78,30 @@ const GuestTable = ({ guests, eventId, webhookUrl, onRefresh, onEdit }: GuestTab
   const [deleting, setDeleting] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [sendingWebhook, setSendingWebhook] = useState<string | null>(null);
+  const [waTemplates, setWaTemplates] = useState<WhatsAppTemplate[]>([]);
   const { toast } = useToast();
+
+  // Fetch WhatsApp templates
+  useEffect(() => {
+    supabase
+      .from("whatsapp_templates")
+      .select("*")
+      .eq("event_id", eventId)
+      .then(({ data }) => {
+        if (data) setWaTemplates(data as WhatsAppTemplate[]);
+      });
+  }, [eventId]);
+
+  const buildWhatsAppLink = (guest: Guest, template: WhatsAppTemplate) => {
+    if (!guest.whatsapp) return null;
+    const phone = guest.whatsapp.replace(/[^0-9]/g, "");
+    let msg = template.message_body;
+    msg = msg.replace(/\{\{nome_convidado\}\}/g, guest.name);
+    msg = msg.replace(/\{\{nome_evento\}\}/g, eventName || "");
+    msg = msg.replace(/\{\{data_evento\}\}/g, eventDate ? new Date(eventDate + "T12:00:00").toLocaleDateString("pt-BR") : "");
+    msg = msg.replace(/\{\{link_confirmacao\}\}/g, `${window.location.origin}/event/${eventId}`);
+    return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+  };
 
   // Compute unique groups
   const groups = useMemo(() => {
