@@ -198,6 +198,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
           webhook_url: webhookUrl.trim() || null,
           confirmation_active: confirmationActive,
           auto_block: autoBlock,
+          qr_children: qrChildren,
           confirmation_deadline: autoBlock && confirmationDeadline ? confirmationDeadline : null,
         })
         .eq("id", eventId)
