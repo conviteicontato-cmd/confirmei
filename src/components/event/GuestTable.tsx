@@ -476,6 +476,19 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
             </SelectContent>
           </Select>
         )}
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Todos os status</SelectItem>
+            <SelectItem value="pending">Pendentes</SelectItem>
+            <SelectItem value="confirmed">Confirmados</SelectItem>
+            <SelectItem value="declined">Recusados</SelectItem>
+            <SelectItem value="checkedin">Check-in realizado</SelectItem>
+          </SelectContent>
+        </Select>
         {waTemplates.length > 0 && (
           <Select value={messageFilter} onValueChange={setMessageFilter}>
             <SelectTrigger className="w-full sm:w-[220px]">
