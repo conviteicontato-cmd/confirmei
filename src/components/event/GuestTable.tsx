@@ -68,6 +68,7 @@ const TEMPLATE_LABELS: Record<string, string> = {
 const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefresh, onEdit }: GuestTableProps) => {
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("__all__");
+  const [statusFilter, setStatusFilter] = useState("__all__");
   const [messageFilter, setMessageFilter] = useState("__all__");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [resetId, setResetId] = useState<string | null>(null);
