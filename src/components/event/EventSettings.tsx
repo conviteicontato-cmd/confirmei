@@ -96,6 +96,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
   const [hostPassword, setHostPassword] = useState("");
   const [confirmationActive, setConfirmationActive] = useState(true);
   const [autoBlock, setAutoBlock] = useState(false);
+  const [qrChildren, setQrChildren] = useState(false);
   const [confirmationDeadline, setConfirmationDeadline] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -127,6 +128,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
       setHostPassword((data as any).host_password || "");
       setConfirmationActive(data.confirmation_active !== false);
       setAutoBlock(data.auto_block || false);
+      setQrChildren(data.qr_children || false);
       setConfirmationDeadline(data.confirmation_deadline ? data.confirmation_deadline.substring(0, 16) : "");
     } catch (error: any) {
       toast({
