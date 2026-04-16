@@ -589,6 +589,8 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
         <GuestTable 
           guests={guests} 
           eventId={eventId}
+          eventName={event.name}
+          eventDate={event.event_date}
           webhookUrl={event.webhook_url}
           onRefresh={fetchEventData}
           onEdit={(guest) => setEditGuest(guest)}
