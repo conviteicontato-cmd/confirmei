@@ -189,7 +189,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
   };
 
   const exportToCSV = (guestsToExport: Guest[], filename: string) => {
-    const headers = ["Nome", "Status", "Máx Adultos", "Máx Crianças", "Adultos Confirmados", "Crianças Confirmadas", "Check-in", "Grupo/Família", "Acompanhantes", "Crianças (nome/idade)", "Observações"];
+    const headers = ["Nome", "Status", "Máx Adultos", "Máx Crianças", "Adultos Confirmados", "Crianças Confirmadas", "Check-in", "Grupo/Família", "WhatsApp", "Acompanhantes", "Crianças (nome/idade)", "Observações"];
     const csvContent = [
       headers.join(";"),
       ...guestsToExport.map(guest => {
@@ -207,6 +207,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
           guest.confirmed_children || 0,
           guest.checkin_done ? "Sim" : "Não",
           escapeCSVCell(guest.group_name || ""),
+          escapeCSVCell(guest.whatsapp || ""),
           escapeCSVCell(companionNames),
           escapeCSVCell(childrenInfo),
           escapeCSVCell(guest.observations || "")
@@ -239,11 +240,17 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ["Nome", "Máx Adultos", "Máx Crianças", "Observações", "Grupo/Família"];
-    const exampleRow = ["João da Silva", 2, 1, "Alergia a camarão", "Família Silva"];
+    const headers = ["Nome", "Máx Adultos", "Máx Crianças", "Observações", "Grupo/Família", "WhatsApp"];
+    const exampleRow = ["João da Silva", 2, 1, "Alergia a camarão", "Família Silva", "+5521999999999"];
     const ws = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
     // Set column widths
-    ws["!cols"] = [{ wch: 25 }, { wch: 14 }, { wch: 14 }, { wch: 25 }, { wch: 20 }];
+    ws["!cols"] = [{ wch: 25 }, { wch: 14 }, { wch: 14 }, { wch: 25 }, { wch: 20 }, { wch: 20 }];
+    // Format WhatsApp column as text
+    const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c: 5 })];
+      if (cell) cell.t = "s";
+    }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Convidados");
     XLSX.writeFile(wb, "modelo_convidados.xlsx");
