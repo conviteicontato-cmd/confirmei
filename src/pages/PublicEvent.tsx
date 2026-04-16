@@ -255,28 +255,48 @@ const PublicEvent = () => {
     setChildrenAges(newAges);
   };
 
+  const handleProceedToWhatsApp = () => {
+    // After filling confirmation details, go to WhatsApp step
+    if (selectedGuest?.whatsapp) {
+      setWhatsappInput(selectedGuest.whatsapp);
+      setWhatsappConfirmed(false);
+    } else {
+      setWhatsappInput("");
+      setWhatsappConfirmed(false);
+    }
+    setPageState("whatsapp");
+  };
+
+  const handleConfirmWhatsApp = (keepExisting: boolean) => {
+    if (keepExisting && selectedGuest?.whatsapp) {
+      setWhatsappInput(selectedGuest.whatsapp);
+    }
+    setWhatsappConfirmed(true);
+  };
+
   const handleConfirm = async () => {
     if (!selectedGuest || !eventId) return;
+
+    // Normalize whatsapp
+    const normalizedWa = whatsappInput ? whatsappInput.replace(/[^0-9+]/g, "") : null;
 
     setSaving(true);
 
     try {
-      // Use edge function for secure guest confirmation (bypasses RLS with service role)
       const { data, error } = await supabase.functions.invoke('confirm-guest', {
         body: {
           guest_id: selectedGuest.id,
           event_id: eventId,
-          confirmed_adults: adults + 1, // +1 for the guest themselves
+          confirmed_adults: adults + 1,
           confirmed_children: children,
           children: children > 0 ? childrenNames.map((name, i) => ({ index: i + 1, name, age: childrenAges[i] || "" })) : [],
           companions: adults > 0 ? companionNames.map((name, i) => ({ index: i + 1, name })) : [],
+          whatsapp: normalizedWa,
         },
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
-      // Webhook is now handled server-side by the confirm-guest edge function
 
       setPageState("success");
     } catch (error: any) {
