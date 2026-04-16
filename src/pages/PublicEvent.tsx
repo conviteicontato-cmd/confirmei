@@ -198,12 +198,22 @@ const PublicEvent = () => {
     (event.auto_block === true && event.confirmation_deadline && new Date() > new Date(event.confirmation_deadline))
   ) : false;
 
+  const fetchParticipants = async (guestId: string) => {
+    const { data } = await supabase
+      .from("guest_participants")
+      .select("id, name, type, age, qr_code, checked_in_at")
+      .eq("guest_id", guestId)
+      .order("type");
+    setParticipants(data || []);
+  };
+
   const handleSelectGuest = (guest: GuestData) => {
     setSelectedGuest(guest);
-    // If guest already confirmed, go straight to success screen
+    setValidationErrors({});
     if (guest.status === 'confirmed') {
       setAdults((guest.confirmed_adults || 1) - 1);
       setChildren(guest.confirmed_children || 0);
+      fetchParticipants(guest.id);
       setPageState("success");
       return;
     }
@@ -212,6 +222,7 @@ const PublicEvent = () => {
     setChildrenAges([]);
     setCompanionNames([]);
     setChildrenNames([]);
+    setParticipants([]);
     setPageState("confirm");
   };
 
