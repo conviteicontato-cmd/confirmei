@@ -209,6 +209,19 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
         || (groupFilter === "__none__" && !guest.group_name)
         || guest.group_name === groupFilter;
 
+      let matchesStatus = true;
+      if (statusFilter !== "__all__") {
+        if (statusFilter === "checkedin") {
+          matchesStatus = !!guest.checkin_done;
+        } else if (statusFilter === "confirmed") {
+          matchesStatus = guest.status === "confirmed" && !guest.checkin_done;
+        } else if (statusFilter === "pending") {
+          matchesStatus = guest.status === "pending" || guest.status === null;
+        } else if (statusFilter === "declined") {
+          matchesStatus = guest.status === "declined" || guest.status === "canceled";
+        }
+      }
+
       let matchesMessage = true;
       if (messageFilter !== "__all__") {
         const guestLogTypes = new Set(messageLogs.filter(l => l.guest_id === guest.id).map(l => l.template_type));
@@ -221,9 +234,9 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
         }
       }
 
-      return matchesSearch && matchesGroup && matchesMessage;
+      return matchesSearch && matchesGroup && matchesStatus && matchesMessage;
     });
-  }, [guests, search, groupFilter, messageFilter, messageLogs]);
+  }, [guests, search, groupFilter, statusFilter, messageFilter, messageLogs]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
