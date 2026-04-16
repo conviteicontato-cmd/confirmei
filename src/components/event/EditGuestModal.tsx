@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import PhoneInputField from "@/components/ui/phone-input";
+import { ExternalLink } from "lucide-react";
 import type { Guest } from "./EventManagement";
 
 interface EditGuestModalProps {
@@ -28,6 +30,14 @@ interface EditGuestModalProps {
   onSuccess: () => void;
 }
 
+const normalizeWhatsApp = (value: string): string => {
+  if (!value) return "";
+  const digits = value.replace(/[^0-9+]/g, "");
+  if (digits.startsWith("+")) return digits;
+  if (digits.length >= 10) return "+" + digits;
+  return digits;
+};
+
 const EditGuestModal = ({ open, onOpenChange, guest, eventId, onSuccess }: EditGuestModalProps) => {
   const [name, setName] = useState("");
   const [maxAdults, setMaxAdults] = useState("1");
@@ -37,6 +47,7 @@ const EditGuestModal = ({ open, onOpenChange, guest, eventId, onSuccess }: EditG
   const [confirmedChildren, setConfirmedChildren] = useState("0");
   const [observations, setObservations] = useState("");
   const [groupName, setGroupName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState("");
   const { toast } = useToast();
@@ -51,6 +62,7 @@ const EditGuestModal = ({ open, onOpenChange, guest, eventId, onSuccess }: EditG
       setConfirmedChildren(String(guest.confirmed_children || 0));
       setObservations(guest.observations || "");
       setGroupName(guest.group_name || "");
+      setWhatsapp(guest.whatsapp || "");
       setNameError("");
     }
   }, [guest, open]);
@@ -66,6 +78,14 @@ const EditGuestModal = ({ open, onOpenChange, guest, eventId, onSuccess }: EditG
     const confC = parseInt(confirmedChildren) || 0;
     if (confC > maxC) setConfirmedChildren(maxChildren);
   }, [maxChildren, confirmedChildren]);
+
+  const handleTestWhatsApp = () => {
+    const normalized = normalizeWhatsApp(whatsapp);
+    if (normalized) {
+      const clean = normalized.replace(/[^0-9]/g, "");
+      window.open(`https://wa.me/${clean}`, "_blank");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +107,8 @@ const EditGuestModal = ({ open, onOpenChange, guest, eventId, onSuccess }: EditG
       const confA = status === "confirmed" ? Math.min(Math.max(0, parseInt(confirmedAdults) || 0), maxA) : 0;
       const confC = status === "confirmed" ? Math.min(Math.max(0, parseInt(confirmedChildren) || 0), maxC) : 0;
 
+      const normalizedWa = normalizeWhatsApp(whatsapp);
+
       const { error } = await supabase.from("guests").update({
         name: trimmedName,
         max_adults: maxA,
@@ -96,6 +118,7 @@ const EditGuestModal = ({ open, onOpenChange, guest, eventId, onSuccess }: EditG
         confirmed_children: confC,
         observations: observations.trim() || null,
         group_name: groupName.trim() || null,
+        whatsapp: normalizedWa || null,
       }).eq("id", guest.id);
 
       if (error) throw error;
@@ -128,6 +151,26 @@ const EditGuestModal = ({ open, onOpenChange, guest, eventId, onSuccess }: EditG
           <div className="space-y-2">
             <Label htmlFor="edit-groupName">Grupo/Família</Label>
             <Input id="edit-groupName" value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Ex: Família Silva, Amigos do trabalho" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-whatsapp">WhatsApp</Label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <PhoneInputField
+                  id="edit-whatsapp"
+                  value={whatsapp}
+                  onChange={setWhatsapp}
+                  placeholder="+55 21 99999-9999"
+                />
+              </div>
+              {whatsapp && (
+                <Button type="button" variant="outline" size="icon" className="shrink-0" onClick={handleTestWhatsApp} title="Testar link WhatsApp">
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">Número com código do país (DDI)</p>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
