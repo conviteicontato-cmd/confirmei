@@ -24,7 +24,7 @@ const SidebarContent = ({
 }: { 
   eventName: string;
   activeTab: string;
-  onTabChange: (tab: "convidados" | "checkin" | "configuracoes") => void;
+  onTabChange: (tab: "convidados" | "checkin" | "configuracoes" | "mensagens") => void;
   onNavigate: (path: string) => void;
 }) => {
   const navigate = useNavigate();
@@ -39,7 +39,7 @@ const SidebarContent = ({
     navigate("/auth");
   };
 
-  const handleTabClick = (tab: "convidados" | "checkin" | "configuracoes") => {
+  const handleTabClick = (tab: "convidados" | "checkin" | "configuracoes" | "mensagens") => {
     onTabChange(tab);
   };
 
@@ -114,9 +114,7 @@ const SidebarContent = ({
             onClick={() => handleTabClick("configuracoes")}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ml-2",
-              activeTab === "configuracoes"
-                ? "font-medium"
-                : ""
+              activeTab === "configuracoes" ? "font-medium" : ""
             )}
             style={{
               color: activeTab === "configuracoes" ? 'hsl(var(--sidebar-accent-foreground))' : 'hsl(var(--sidebar-foreground) / 0.7)',
@@ -126,7 +124,21 @@ const SidebarContent = ({
             <Settings className="h-4 w-4" />
             <span>Configurações</span>
           </button>
-        </div>
+
+          <button
+            onClick={() => handleTabClick("mensagens")}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ml-2",
+              activeTab === "mensagens" ? "font-medium" : ""
+            )}
+            style={{
+              color: activeTab === "mensagens" ? 'hsl(var(--sidebar-accent-foreground))' : 'hsl(var(--sidebar-foreground) / 0.7)',
+              background: activeTab === "mensagens" ? 'hsl(var(--sidebar-accent))' : 'transparent',
+            }}
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span>Mensagens</span>
+          </button>
       </nav>
 
       <div className="p-4 border-t border-sidebar-border">
@@ -151,7 +163,7 @@ const EventSidebar = ({ user, eventName, eventId, activeTab, onTabChange }: Even
     setOpen(false);
   };
 
-  const handleTabChange = (tab: "convidados" | "checkin" | "configuracoes") => {
+  const handleTabChange = (tab: "convidados" | "checkin" | "configuracoes" | "mensagens") => {
     onTabChange(tab);
     setOpen(false);
   };
