@@ -126,7 +126,7 @@ const CheckinPage = ({ eventId, eventName }: CheckinPageProps) => {
   }, [fetchGuests]);
 
   // --- QR Scanner via native BarcodeDetector or manual canvas ---
-  const handleQrResult = useCallback((qrCode: string) => {
+  const handleQrResult = useCallback(async (qrCode: string) => {
     const now = Date.now();
     // Debounce: same QR within 5 seconds
     if (qrCode === lastScannedRef.current && now - lastScanTimeRef.current < 5000) {
@@ -138,9 +138,50 @@ const CheckinPage = ({ eventId, eventName }: CheckinPageProps) => {
     console.log("[checkin-scanner] QR lido:", qrCode, "evento:", eventId);
 
     // Try to find guest by qr_code
-    const guest = guestsRef.current.find((g) => g.qr_code === qrCode);
+    let guest = guestsRef.current.find((g) => g.qr_code === qrCode);
 
     if (!guest) {
+      // Try to find by individual participant QR code
+      const { data: participant } = await supabase
+        .from("guest_participants")
+        .select("guest_id, name, type, checked_in_at")
+        .eq("qr_code", qrCode)
+        .eq("event_id", eventId)
+        .maybeSingle();
+
+      if (participant) {
+        if (participant.checked_in_at) {
+          setScannerMessage(`${participant.name} já fez check-in.`);
+          setScannerMessageType("error");
+          setTimeout(() => setScannerMessage(null), 3000);
+          return;
+        }
+
+        // Mark participant as checked in
+        await supabase
+          .from("guest_participants")
+          .update({ checked_in_at: new Date().toISOString() })
+          .eq("qr_code", qrCode);
+
+        setScannerMessage(`✅ ${participant.name} (${participant.type === "main" ? "Titular" : participant.type === "adult" ? "Acompanhante" : "Criança"}) — check-in realizado!`);
+        setScannerMessageType("success");
+        
+        // Also find the parent guest and open modal
+        guest = guestsRef.current.find((g) => g.id === participant.guest_id);
+        if (guest) {
+          pausedRef.current = true;
+          setSelectedGuest(guest as CheckinGuest);
+          setTimeout(() => {
+            pausedRef.current = false;
+            setScannerMessage(null);
+          }, 2000);
+        } else {
+          setTimeout(() => setScannerMessage(null), 3000);
+        }
+        fetchGuests();
+        return;
+      }
+
       // Check if QR looks valid (UUID format)
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(qrCode)) {
@@ -170,7 +211,7 @@ const CheckinPage = ({ eventId, eventName }: CheckinPageProps) => {
       pausedRef.current = false;
       setScannerMessage(null);
     }, 2000);
-  }, [eventId]);
+  }, [eventId, fetchGuests]);
 
   const startCamera = useCallback(async () => {
     setCameraError(null);

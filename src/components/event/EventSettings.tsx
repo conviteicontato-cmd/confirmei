@@ -70,6 +70,7 @@ interface EventData {
   confirmation_active: boolean | null;
   confirmation_deadline: string | null;
   auto_block: boolean | null;
+  qr_children: boolean;
 }
 
 const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
@@ -95,6 +96,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
   const [hostPassword, setHostPassword] = useState("");
   const [confirmationActive, setConfirmationActive] = useState(true);
   const [autoBlock, setAutoBlock] = useState(false);
+  const [qrChildren, setQrChildren] = useState(false);
   const [confirmationDeadline, setConfirmationDeadline] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -126,6 +128,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
       setHostPassword((data as any).host_password || "");
       setConfirmationActive(data.confirmation_active !== false);
       setAutoBlock(data.auto_block || false);
+      setQrChildren(data.qr_children || false);
       setConfirmationDeadline(data.confirmation_deadline ? data.confirmation_deadline.substring(0, 16) : "");
     } catch (error: any) {
       toast({
@@ -195,6 +198,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
           webhook_url: webhookUrl.trim() || null,
           confirmation_active: confirmationActive,
           auto_block: autoBlock,
+          qr_children: qrChildren,
           confirmation_deadline: autoBlock && confirmationDeadline ? confirmationDeadline : null,
         })
         .eq("id", eventId)
@@ -649,6 +653,21 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
                 <span className="text-sm font-medium">Modo: Lista Manual</span>
               </>
             )}
+          </div>
+
+          <div className="flex items-center justify-between py-2 border-t border-border pt-4">
+            <div>
+              <p className="font-medium text-sm">Gerar QR Code para crianças</p>
+              <p className="text-xs text-muted-foreground">
+                {qrChildren
+                  ? "QR Codes serão gerados para adultos e crianças"
+                  : "QR Codes serão gerados apenas para adultos"}
+              </p>
+            </div>
+            <Switch
+              checked={qrChildren}
+              onCheckedChange={setQrChildren}
+            />
           </div>
         </div>
 

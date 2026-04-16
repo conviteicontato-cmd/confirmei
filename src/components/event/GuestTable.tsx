@@ -68,6 +68,7 @@ const TEMPLATE_LABELS: Record<string, string> = {
 const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefresh, onEdit }: GuestTableProps) => {
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("__all__");
+  const [statusFilter, setStatusFilter] = useState("__all__");
   const [messageFilter, setMessageFilter] = useState("__all__");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [resetId, setResetId] = useState<string | null>(null);
@@ -208,6 +209,19 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
         || (groupFilter === "__none__" && !guest.group_name)
         || guest.group_name === groupFilter;
 
+      let matchesStatus = true;
+      if (statusFilter !== "__all__") {
+        if (statusFilter === "checkedin") {
+          matchesStatus = !!guest.checkin_done;
+        } else if (statusFilter === "confirmed") {
+          matchesStatus = guest.status === "confirmed" && !guest.checkin_done;
+        } else if (statusFilter === "pending") {
+          matchesStatus = guest.status === "pending" || guest.status === null;
+        } else if (statusFilter === "declined") {
+          matchesStatus = guest.status === "declined" || guest.status === "canceled";
+        }
+      }
+
       let matchesMessage = true;
       if (messageFilter !== "__all__") {
         const guestLogTypes = new Set(messageLogs.filter(l => l.guest_id === guest.id).map(l => l.template_type));
@@ -220,9 +234,9 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
         }
       }
 
-      return matchesSearch && matchesGroup && matchesMessage;
+      return matchesSearch && matchesGroup && matchesStatus && matchesMessage;
     });
-  }, [guests, search, groupFilter, messageFilter, messageLogs]);
+  }, [guests, search, groupFilter, statusFilter, messageFilter, messageLogs]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -462,6 +476,19 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
             </SelectContent>
           </Select>
         )}
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Todos os status</SelectItem>
+            <SelectItem value="pending">Pendentes</SelectItem>
+            <SelectItem value="confirmed">Confirmados</SelectItem>
+            <SelectItem value="declined">Recusados</SelectItem>
+            <SelectItem value="checkedin">Check-in realizado</SelectItem>
+          </SelectContent>
+        </Select>
         {waTemplates.length > 0 && (
           <Select value={messageFilter} onValueChange={setMessageFilter}>
             <SelectTrigger className="w-full sm:w-[220px]">
@@ -502,7 +529,7 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
       <div className="lg:hidden space-y-3">
         {filteredGuests.length === 0 ? (
           <div className="card-elegant p-8 text-center text-muted-foreground">
-            {search || groupFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
+            {search || groupFilter !== "__all__" || statusFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
           </div>
         ) : (
           filteredGuests.map((guest) => (<GuestCard key={guest.id} guest={guest} />))
@@ -531,7 +558,7 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
             {filteredGuests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={groups.length > 0 ? 12 : 11} className="text-center py-8 text-muted-foreground">
-                  {search || groupFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
+                  {search || groupFilter !== "__all__" || statusFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
                 </TableCell>
               </TableRow>
             ) : (

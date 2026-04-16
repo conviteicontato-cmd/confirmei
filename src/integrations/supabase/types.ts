@@ -65,6 +65,7 @@ export type Database = {
           id: string
           name: string
           primary_color: string | null
+          qr_children: boolean
           secondary_color: string | null
           short_message: string | null
           updated_at: string
@@ -88,6 +89,7 @@ export type Database = {
           id?: string
           name: string
           primary_color?: string | null
+          qr_children?: boolean
           secondary_color?: string | null
           short_message?: string | null
           updated_at?: string
@@ -111,6 +113,7 @@ export type Database = {
           id?: string
           name?: string
           primary_color?: string | null
+          qr_children?: boolean
           secondary_color?: string | null
           short_message?: string | null
           updated_at?: string
@@ -118,6 +121,61 @@ export type Database = {
           webhook_url?: string | null
         }
         Relationships: []
+      }
+      guest_participants: {
+        Row: {
+          checked_in_at: string | null
+          created_at: string
+          event_id: string
+          guest_id: string
+          id: string
+          name: string | null
+          qr_code: string
+          type: string
+        }
+        Insert: {
+          checked_in_at?: string | null
+          created_at?: string
+          event_id: string
+          guest_id: string
+          id?: string
+          name?: string | null
+          qr_code?: string
+          type: string
+        }
+        Update: {
+          checked_in_at?: string | null
+          created_at?: string
+          event_id?: string
+          guest_id?: string
+          id?: string
+          name?: string | null
+          qr_code?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_participants_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_participants_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "public_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_participants_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guests: {
         Row: {
