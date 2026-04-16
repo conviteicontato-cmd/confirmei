@@ -174,9 +174,64 @@ Deno.serve(async (req) => {
     // Fetch the updated guest to return QR code
     const { data: updatedGuest } = await supabase
       .from('guests')
-      .select('qr_code')
+      .select('qr_code, name')
       .eq('id', guest_id)
       .single();
+
+    // Generate individual participants with QR codes
+    try {
+      // Check if event has qr_children enabled
+      const { data: qrConfig } = await supabase
+        .from('events')
+        .select('qr_children')
+        .eq('id', event_id)
+        .single();
+
+      const qrChildren = qrConfig?.qr_children || false;
+
+      // Delete existing participants for this guest
+      await supabase.from('guest_participants').delete().eq('guest_id', guest_id);
+
+      const participants: Array<{
+        event_id: string;
+        guest_id: string;
+        name: string;
+        type: string;
+      }> = [];
+
+      // Main guest
+      participants.push({ event_id, guest_id, name: updatedGuest?.name || 'Titular', type: 'main' });
+
+      // Adult companions
+      for (const companion of sanitizedCompanions) {
+        participants.push({
+          event_id,
+          guest_id,
+          name: companion.name || `Acompanhante ${companion.index + 1}`,
+          type: 'adult',
+        });
+      }
+
+      // Children (if enabled)
+      if (qrChildren) {
+        for (const child of sanitizedChildren) {
+          participants.push({
+            event_id,
+            guest_id,
+            name: child.name || `Criança ${child.index + 1}`,
+            type: 'child',
+          });
+        }
+      }
+
+      if (participants.length > 0) {
+        const { error: pError } = await supabase.from('guest_participants').insert(participants);
+        if (pError) console.error('[confirm-guest] Participants insert error:', pError.message);
+        else console.log(`[confirm-guest] Created ${participants.length} participants for guest ${guest_id}`);
+      }
+    } catch (pErr: any) {
+      console.error('[confirm-guest] Participant generation error:', pErr.message);
+    }
 
     console.log(`[confirm-guest] Successfully confirmed guest ${guest_id}`);
 
