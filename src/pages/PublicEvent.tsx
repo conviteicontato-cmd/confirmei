@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Search, User, ArrowLeft, Minus, Plus, Users, Baby, Share2, CheckCircle2 } from "lucide-react";
+import { Loader2, Search, User, ArrowLeft, Minus, Plus, Users, Baby, Share2, CheckCircle2, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -33,9 +33,10 @@ interface GuestData {
   status: string | null;
   qr_code: string | null;
   confirmed_at: string | null;
+  whatsapp: string | null;
 }
 
-type PageState = "search" | "confirm" | "success";
+type PageState = "search" | "confirm" | "whatsapp" | "success";
 
 const PublicEvent = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -54,6 +55,8 @@ const PublicEvent = () => {
   const [childrenAges, setChildrenAges] = useState<string[]>([]);
   const [companionNames, setCompanionNames] = useState<string[]>([]);
   const [childrenNames, setChildrenNames] = useState<string[]>([]);
+  const [whatsappInput, setWhatsappInput] = useState("");
+  const [whatsappConfirmed, setWhatsappConfirmed] = useState(false);
 
   const { toast } = useToast();
 
