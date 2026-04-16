@@ -70,6 +70,7 @@ interface EventData {
   confirmation_active: boolean | null;
   confirmation_deadline: string | null;
   auto_block: boolean | null;
+  qr_children: boolean;
 }
 
 const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
