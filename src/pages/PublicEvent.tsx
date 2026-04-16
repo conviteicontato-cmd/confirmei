@@ -612,10 +612,92 @@ const PublicEvent = () => {
                 </div>
               )}
 
-              {/* Confirm Button */}
+              {/* Next: WhatsApp Step */}
+              <Button
+                onClick={handleProceedToWhatsApp}
+                className="w-full h-14 text-lg font-semibold rounded-xl text-white"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Continuar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* WhatsApp Step */}
+        {pageState === "whatsapp" && selectedGuest && !isConfirmationsClosed && (
+          <div className="space-y-6">
+            <button
+              onClick={() => setPageState("confirm")}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </button>
+
+            <div className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
+              <div className="text-center">
+                <Phone className="h-8 w-8 mx-auto mb-3" style={{ color: primaryColor }} />
+                <h2 className="text-xl font-display font-bold text-foreground">
+                  Seu WhatsApp
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Para que o organizador possa entrar em contato
+                </p>
+              </div>
+
+              {selectedGuest.whatsapp && !whatsappConfirmed ? (
+                <div className="space-y-4">
+                  <p className="text-center text-muted-foreground">
+                    Este ainda é seu número de WhatsApp?
+                  </p>
+                  <div className="text-center text-lg font-medium text-foreground py-3 px-4 rounded-lg bg-muted/50">
+                    {selectedGuest.whatsapp}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant="outline"
+                      className="h-12 rounded-xl"
+                      onClick={() => {
+                        setWhatsappInput("");
+                        setWhatsappConfirmed(true);
+                      }}
+                    >
+                      Não, atualizar
+                    </Button>
+                    <Button
+                      className="h-12 rounded-xl text-white"
+                      style={{ backgroundColor: primaryColor }}
+                      onClick={() => handleConfirmWhatsApp(true)}
+                    >
+                      Sim, é esse
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {whatsappConfirmed && whatsappInput === "" && (
+                    <p className="text-center text-sm text-muted-foreground">Informe seu novo número:</p>
+                  )}
+                  {!selectedGuest.whatsapp && !whatsappConfirmed && (
+                    <p className="text-center text-sm text-muted-foreground">Informe seu número de WhatsApp com código do país:</p>
+                  )}
+                  <Input
+                    value={whatsappInput}
+                    onChange={(e) => setWhatsappInput(e.target.value)}
+                    placeholder="+55 21 99999-9999"
+                    className="h-14 text-lg text-center rounded-xl"
+                    type="tel"
+                  />
+                  <p className="text-xs text-center text-muted-foreground">
+                    Inclua o código do país. Ex: +55 para Brasil
+                  </p>
+                </div>
+              )}
+
               <Button
                 onClick={handleConfirm}
-                disabled={saving}
+                disabled={saving || (!whatsappInput && !selectedGuest.whatsapp)}
                 className="w-full h-14 text-lg font-semibold rounded-xl text-white"
                 style={{ backgroundColor: primaryColor }}
               >
