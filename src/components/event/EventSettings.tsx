@@ -654,6 +654,21 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
               </>
             )}
           </div>
+
+          <div className="flex items-center justify-between py-2 border-t border-border pt-4">
+            <div>
+              <p className="font-medium text-sm">Gerar QR Code para crianças</p>
+              <p className="text-xs text-muted-foreground">
+                {qrChildren
+                  ? "QR Codes serão gerados para adultos e crianças"
+                  : "QR Codes serão gerados apenas para adultos"}
+              </p>
+            </div>
+            <Switch
+              checked={qrChildren}
+              onCheckedChange={setQrChildren}
+            />
+          </div>
         </div>
 
         {/* Public Event Page Card */}
