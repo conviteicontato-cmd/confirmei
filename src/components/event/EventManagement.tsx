@@ -389,6 +389,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
         const maxChildrenIdx = findColumnIndex(headerValues, ["max criancas", "max. criancas", "criancas"]);
         const obsIdx = findColumnIndex(headerValues, ["observacoes", "observacao", "obs"]);
         const groupIdx = findColumnIndex(headerValues, ["grupo/familia", "grupo", "familia", "family"]);
+        const whatsappIdx = findColumnIndex(headerValues, ["whatsapp", "telefone", "phone", "celular"]);
 
         for (const line of lines.slice(1)) {
           const values = parseCSVLine(line, delimiter);
@@ -401,6 +402,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
           else if (values[2]) row["Máx Crianças"] = values[2];
           if (obsIdx >= 0) row["Observações"] = values[obsIdx] || "";
           if (groupIdx >= 0) row["Grupo/Família"] = values[groupIdx] || "";
+          if (whatsappIdx >= 0) row["WhatsApp"] = values[whatsappIdx] || "";
           rows.push(row);
         }
       }
