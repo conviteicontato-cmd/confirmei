@@ -267,7 +267,29 @@ const PublicEvent = () => {
   };
 
   const handleProceedToWhatsApp = () => {
-    // After filling confirmation details, go to WhatsApp step
+    // Validate companion names
+    const errors: Record<string, string> = {};
+    for (let i = 0; i < adults; i++) {
+      if (!companionNames[i]?.trim()) {
+        errors[`companion_${i}`] = "Informe o nome do acompanhante.";
+      }
+    }
+    for (let i = 0; i < children; i++) {
+      if (!childrenNames[i]?.trim()) {
+        errors[`child_name_${i}`] = "Informe o nome da criança.";
+      }
+      if (!childrenAges[i]?.trim()) {
+        errors[`child_age_${i}`] = "Informe a idade da criança.";
+      } else {
+        const ageNum = parseInt(childrenAges[i], 10);
+        if (isNaN(ageNum) || ageNum < 0 || ageNum > 17) {
+          errors[`child_age_${i}`] = "Idade inválida (0-17).";
+        }
+      }
+    }
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     if (selectedGuest?.whatsapp) {
       setWhatsappInput(selectedGuest.whatsapp);
       setWhatsappConfirmed(false);
