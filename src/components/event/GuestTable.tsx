@@ -529,7 +529,7 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
       <div className="lg:hidden space-y-3">
         {filteredGuests.length === 0 ? (
           <div className="card-elegant p-8 text-center text-muted-foreground">
-            {search || groupFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
+            {search || groupFilter !== "__all__" || statusFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
           </div>
         ) : (
           filteredGuests.map((guest) => (<GuestCard key={guest.id} guest={guest} />))
@@ -558,7 +558,7 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
             {filteredGuests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={groups.length > 0 ? 12 : 11} className="text-center py-8 text-muted-foreground">
-                  {search || groupFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
+                  {search || groupFilter !== "__all__" || statusFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
                 </TableCell>
               </TableRow>
             ) : (
