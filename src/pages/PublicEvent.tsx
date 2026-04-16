@@ -782,72 +782,90 @@ const PublicEvent = () => {
               <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
             
-             <div>
+            <div>
               <h2 className="text-2xl font-display font-bold text-foreground mb-2">
                 {selectedGuest.confirmed_at ? "Sua presença já foi registrada" : "Presença Confirmada!"}
               </h2>
               <p className="text-muted-foreground">
-                Apresente este QR Code na entrada do evento
+                {participants.length > 1
+                  ? `Apresente os ${participants.length} QR Codes na entrada do evento`
+                  : "Apresente este QR Code na entrada do evento"}
               </p>
             </div>
 
-            {/* QR Code Card */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 space-y-4">
-              <div className="text-center">
-                <h3 className="font-display font-bold text-lg text-foreground">
-                  {event.name}
-                </h3>
-                <p className="text-sm text-muted-foreground">{formattedDate}</p>
-              </div>
-
-              {/* QR Code */}
-               <div ref={qrRef} className="flex justify-center py-4 bg-white">
-                 <QRCodeCanvas
-                  value={selectedGuest.qr_code || selectedGuest.id}
-                  size={180}
-                  level="H"
-                  includeMargin={true}
-                   bgColor="#ffffff"
-                />
-              </div>
-
-              {/* Guest Info */}
-              <div className="text-left border-t pt-4">
-                <p className="font-medium text-foreground">{selectedGuest.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {adults + 1} adulto{adults + 1 > 1 ? "s" : ""}
-                </p>
-                {children > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    {children} criança{children > 1 ? "s" : ""}
-                  </p>
-                )}
-              </div>
+            {/* Event Info */}
+            <div className="text-center">
+              <h3 className="font-display font-bold text-lg text-foreground">
+                {event.name}
+              </h3>
+              <p className="text-sm text-muted-foreground">{formattedDate}</p>
             </div>
+
+            {/* Individual QR Codes */}
+            {participants.length > 0 ? (
+              <div className="space-y-4">
+                {participants.map((participant) => (
+                  <div key={participant.id} className="bg-white rounded-2xl shadow-lg p-5 space-y-3">
+                    <div className="flex justify-center py-3 bg-white">
+                      <QRCodeCanvas
+                        value={participant.qr_code}
+                        size={160}
+                        level="H"
+                        includeMargin={true}
+                        bgColor="#ffffff"
+                      />
+                    </div>
+                    <div className="text-center border-t pt-3">
+                      <p className="font-medium text-foreground text-lg">
+                        {participant.name || "Participante"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {participant.type === "main" ? "Convidado Principal" : participant.type === "adult" ? "Acompanhante" : "Criança"}
+                        {participant.age ? ` — ${participant.age} anos` : ""}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Fallback: single QR code from guest record */
+              <div className="bg-white rounded-2xl shadow-lg p-6 space-y-4">
+                <div ref={qrRef} className="flex justify-center py-4 bg-white">
+                  <QRCodeCanvas
+                    value={selectedGuest.qr_code || selectedGuest.id}
+                    size={180}
+                    level="H"
+                    includeMargin={true}
+                    bgColor="#ffffff"
+                  />
+                </div>
+                <div className="text-left border-t pt-4">
+                  <p className="font-medium text-foreground">{selectedGuest.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {adults + 1} adulto{adults + 1 > 1 ? "s" : ""}
+                  </p>
+                  {children > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      {children} criança{children > 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Save hint */}
             <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-               💡 Salve o QR Code para apresentar na entrada
+              💡 Salve os QR Codes para apresentar na entrada
             </p>
 
-             {/* Download Button */}
+            {/* Share Button */}
             <Button
-               className="w-full h-14 text-lg rounded-xl text-white"
-               style={{ backgroundColor: primaryColor }}
-               onClick={downloadQRCode}
+              variant="outline"
+              className="w-full h-12 text-base rounded-xl"
+              onClick={shareQRCode}
             >
-               <Download className="h-5 w-5 mr-2" />
-               Salvar QR Code
-             </Button>
-
-             {/* Share Button */}
-             <Button
-               variant="outline"
-               className="w-full h-12 text-base rounded-xl"
-               onClick={shareQRCode}
-             >
               <Share2 className="h-5 w-5 mr-2" />
-               Compartilhar
+              Compartilhar
             </Button>
           </div>
         )}
