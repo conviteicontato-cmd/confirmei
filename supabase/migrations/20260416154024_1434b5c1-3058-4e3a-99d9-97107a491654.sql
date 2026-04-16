@@ -1,0 +1,1 @@
+ALTER TABLE public.guest_participants ADD COLUMN IF NOT EXISTS age text;

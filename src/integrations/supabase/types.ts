@@ -124,6 +124,7 @@ export type Database = {
       }
       guest_participants: {
         Row: {
+          age: string | null
           checked_in_at: string | null
           created_at: string
           event_id: string
@@ -134,6 +135,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          age?: string | null
           checked_in_at?: string | null
           created_at?: string
           event_id: string
@@ -144,6 +146,7 @@ export type Database = {
           type: string
         }
         Update: {
+          age?: string | null
           checked_in_at?: string | null
           created_at?: string
           event_id?: string
