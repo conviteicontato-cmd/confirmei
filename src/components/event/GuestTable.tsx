@@ -40,7 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Pencil, Trash2, RotateCcw, Send, Clock, QrCode, CheckCircle, MessageSquare, X, MoreVertical, Users, Baby, FolderOpen } from "lucide-react";
+import { Search, Pencil, Trash2, RotateCcw, Send, Clock, QrCode, CheckCircle, MessageSquare, X, MoreVertical, Users, Baby, FolderOpen, Phone } from "lucide-react";
 import { Json } from "@/integrations/supabase/types";
 import type { Guest } from "./EventManagement";
 
@@ -195,11 +195,16 @@ const GuestTable = ({ guests, eventId, webhookUrl, onRefresh, onEdit }: GuestTab
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-foreground truncate">{guest.name}</h3>
-          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1"><Users className="h-3 w-3" />{guest.max_adults || 0}</span>
             <span className="flex items-center gap-1"><Baby className="h-3 w-3" />{guest.max_children || 0}</span>
             {guest.group_name && (
               <span className="flex items-center gap-1"><FolderOpen className="h-3 w-3" />{guest.group_name}</span>
+            )}
+            {guest.whatsapp && (
+              <a href={`https://wa.me/${guest.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-green-600 hover:underline">
+                <Phone className="h-3 w-3" />{guest.whatsapp}
+              </a>
             )}
           </div>
         </div>
@@ -298,6 +303,7 @@ const GuestTable = ({ guests, eventId, webhookUrl, onRefresh, onEdit }: GuestTab
               <TableHead className="text-center">Crianças</TableHead>
               <TableHead className="text-center">Status</TableHead>
               <TableHead className="text-center">Conf.</TableHead>
+              <TableHead>WhatsApp</TableHead>
               <TableHead className="text-center">Check-in</TableHead>
               <TableHead className="text-center">Obs.</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -306,7 +312,7 @@ const GuestTable = ({ guests, eventId, webhookUrl, onRefresh, onEdit }: GuestTab
           <TableBody>
             {filteredGuests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={groups.length > 0 ? 9 : 8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={groups.length > 0 ? 11 : 10} className="text-center py-8 text-muted-foreground">
                   {search || groupFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
                 </TableCell>
               </TableRow>
@@ -321,6 +327,13 @@ const GuestTable = ({ guests, eventId, webhookUrl, onRefresh, onEdit }: GuestTab
                   <TableCell className="text-center">{guest.max_children || 0}</TableCell>
                   <TableCell className="text-center">{getStatusBadge(guest)}</TableCell>
                   <TableCell className="text-center">{(guest.confirmed_adults || 0) + (guest.confirmed_children || 0)}</TableCell>
+                  <TableCell className="text-sm">
+                    {guest.whatsapp ? (
+                      <a href={`https://wa.me/${guest.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline whitespace-nowrap">
+                        {guest.whatsapp}
+                      </a>
+                    ) : (<span className="text-muted-foreground">-</span>)}
+                  </TableCell>
                   <TableCell className="text-center text-sm text-muted-foreground">
                     {guest.checkin_done ? (<span className="text-success">{formatCheckinTime(guest.checkin_at)}</span>) : "-"}
                   </TableCell>

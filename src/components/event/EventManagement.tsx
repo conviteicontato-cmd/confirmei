@@ -55,6 +55,7 @@ export interface Guest {
   companions: Json | null;
   children: Json | null;
   group_name: string | null;
+  whatsapp: string | null;
 }
 
 interface Stats {
@@ -97,7 +98,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
 
       const { data: guestsData, error: guestsError } = await supabase
         .from("guests")
-        .select("id, name, status, max_adults, max_children, confirmed_adults, confirmed_children, checkin_done, checkin_at, qr_code, observations, companions, children, group_name")
+        .select("id, name, status, max_adults, max_children, confirmed_adults, confirmed_children, checkin_done, checkin_at, qr_code, observations, companions, children, group_name, whatsapp")
         .eq("event_id", eventId)
         .order("name");
 
@@ -188,7 +189,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
   };
 
   const exportToCSV = (guestsToExport: Guest[], filename: string) => {
-    const headers = ["Nome", "Status", "Máx Adultos", "Máx Crianças", "Adultos Confirmados", "Crianças Confirmadas", "Check-in", "Grupo/Família", "Acompanhantes", "Crianças (nome/idade)", "Observações"];
+    const headers = ["Nome", "Status", "Máx Adultos", "Máx Crianças", "Adultos Confirmados", "Crianças Confirmadas", "Check-in", "Grupo/Família", "WhatsApp", "Acompanhantes", "Crianças (nome/idade)", "Observações"];
     const csvContent = [
       headers.join(";"),
       ...guestsToExport.map(guest => {
@@ -206,6 +207,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
           guest.confirmed_children || 0,
           guest.checkin_done ? "Sim" : "Não",
           escapeCSVCell(guest.group_name || ""),
+          escapeCSVCell(guest.whatsapp || ""),
           escapeCSVCell(companionNames),
           escapeCSVCell(childrenInfo),
           escapeCSVCell(guest.observations || "")
@@ -238,11 +240,17 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ["Nome", "Máx Adultos", "Máx Crianças", "Observações", "Grupo/Família"];
-    const exampleRow = ["João da Silva", 2, 1, "Alergia a camarão", "Família Silva"];
+    const headers = ["Nome", "Máx Adultos", "Máx Crianças", "Observações", "Grupo/Família", "WhatsApp"];
+    const exampleRow = ["João da Silva", 2, 1, "Alergia a camarão", "Família Silva", "+5521999999999"];
     const ws = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
     // Set column widths
-    ws["!cols"] = [{ wch: 25 }, { wch: 14 }, { wch: 14 }, { wch: 25 }, { wch: 20 }];
+    ws["!cols"] = [{ wch: 25 }, { wch: 14 }, { wch: 14 }, { wch: 25 }, { wch: 20 }, { wch: 20 }];
+    // Format WhatsApp column as text
+    const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c: 5 })];
+      if (cell) cell.t = "s";
+    }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Convidados");
     XLSX.writeFile(wb, "modelo_convidados.xlsx");
@@ -381,6 +389,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
         const maxChildrenIdx = findColumnIndex(headerValues, ["max criancas", "max. criancas", "criancas"]);
         const obsIdx = findColumnIndex(headerValues, ["observacoes", "observacao", "obs"]);
         const groupIdx = findColumnIndex(headerValues, ["grupo/familia", "grupo", "familia", "family"]);
+        const whatsappIdx = findColumnIndex(headerValues, ["whatsapp", "telefone", "phone", "celular"]);
 
         for (const line of lines.slice(1)) {
           const values = parseCSVLine(line, delimiter);
@@ -393,6 +402,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
           else if (values[2]) row["Máx Crianças"] = values[2];
           if (obsIdx >= 0) row["Observações"] = values[obsIdx] || "";
           if (groupIdx >= 0) row["Grupo/Família"] = values[groupIdx] || "";
+          if (whatsappIdx >= 0) row["WhatsApp"] = values[whatsappIdx] || "";
           rows.push(row);
         }
       }
@@ -439,9 +449,19 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
       const maxChildrenRaw = findValue(row, ["max criancas", "criancas"]);
       const observations = sanitizeCSVValue(findValue(row, ["observacoes", "observacao", "obs"])) || null;
       const groupName = sanitizeCSVValue(findValue(row, ["grupo/familia", "grupo", "familia"])) || null;
+      const whatsappRaw = findValue(row, ["whatsapp", "telefone", "phone", "celular"]);
 
       const maxAdults = parseNumericValue(maxAdultsRaw) || 1;
       const maxChildren = parseNumericValue(maxChildrenRaw);
+
+      // Normalize WhatsApp: keep only digits and +
+      let whatsapp: string | null = null;
+      if (whatsappRaw) {
+        const cleaned = whatsappRaw.replace(/[^0-9+]/g, "");
+        if (cleaned.length >= 8) {
+          whatsapp = cleaned.startsWith("+") ? cleaned : "+" + cleaned;
+        }
+      }
 
       const { error } = await supabase.from("guests").insert({
         event_id: eventId,
@@ -453,6 +473,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
         confirmed_children: 0,
         observations,
         group_name: groupName,
+        whatsapp,
       });
 
       if (error) {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Search, User, ArrowLeft, Minus, Plus, Users, Baby, Share2, CheckCircle2 } from "lucide-react";
+import { Loader2, Search, User, ArrowLeft, Minus, Plus, Users, Baby, Share2, CheckCircle2, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -33,9 +33,10 @@ interface GuestData {
   status: string | null;
   qr_code: string | null;
   confirmed_at: string | null;
+  whatsapp: string | null;
 }
 
-type PageState = "search" | "confirm" | "success";
+type PageState = "search" | "confirm" | "whatsapp" | "success";
 
 const PublicEvent = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -54,6 +55,8 @@ const PublicEvent = () => {
   const [childrenAges, setChildrenAges] = useState<string[]>([]);
   const [companionNames, setCompanionNames] = useState<string[]>([]);
   const [childrenNames, setChildrenNames] = useState<string[]>([]);
+  const [whatsappInput, setWhatsappInput] = useState("");
+  const [whatsappConfirmed, setWhatsappConfirmed] = useState(false);
 
   const { toast } = useToast();
 
@@ -162,7 +165,7 @@ const PublicEvent = () => {
       try {
          const { data, error } = await supabase
           .from("guests")
-          .select("id, name, max_adults, max_children, confirmed_adults, confirmed_children, status, qr_code, confirmed_at")
+          .select("id, name, max_adults, max_children, confirmed_adults, confirmed_children, status, qr_code, confirmed_at, whatsapp")
           .eq("event_id", eventId)
           .ilike("name", `%${searchQuery}%`)
           .limit(10);
@@ -252,28 +255,48 @@ const PublicEvent = () => {
     setChildrenAges(newAges);
   };
 
+  const handleProceedToWhatsApp = () => {
+    // After filling confirmation details, go to WhatsApp step
+    if (selectedGuest?.whatsapp) {
+      setWhatsappInput(selectedGuest.whatsapp);
+      setWhatsappConfirmed(false);
+    } else {
+      setWhatsappInput("");
+      setWhatsappConfirmed(false);
+    }
+    setPageState("whatsapp");
+  };
+
+  const handleConfirmWhatsApp = (keepExisting: boolean) => {
+    if (keepExisting && selectedGuest?.whatsapp) {
+      setWhatsappInput(selectedGuest.whatsapp);
+    }
+    setWhatsappConfirmed(true);
+  };
+
   const handleConfirm = async () => {
     if (!selectedGuest || !eventId) return;
+
+    // Normalize whatsapp
+    const normalizedWa = whatsappInput ? whatsappInput.replace(/[^0-9+]/g, "") : null;
 
     setSaving(true);
 
     try {
-      // Use edge function for secure guest confirmation (bypasses RLS with service role)
       const { data, error } = await supabase.functions.invoke('confirm-guest', {
         body: {
           guest_id: selectedGuest.id,
           event_id: eventId,
-          confirmed_adults: adults + 1, // +1 for the guest themselves
+          confirmed_adults: adults + 1,
           confirmed_children: children,
           children: children > 0 ? childrenNames.map((name, i) => ({ index: i + 1, name, age: childrenAges[i] || "" })) : [],
           companions: adults > 0 ? companionNames.map((name, i) => ({ index: i + 1, name })) : [],
+          whatsapp: normalizedWa,
         },
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
-      // Webhook is now handled server-side by the confirm-guest edge function
 
       setPageState("success");
     } catch (error: any) {
@@ -589,10 +612,92 @@ const PublicEvent = () => {
                 </div>
               )}
 
-              {/* Confirm Button */}
+              {/* Next: WhatsApp Step */}
+              <Button
+                onClick={handleProceedToWhatsApp}
+                className="w-full h-14 text-lg font-semibold rounded-xl text-white"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Continuar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* WhatsApp Step */}
+        {pageState === "whatsapp" && selectedGuest && !isConfirmationsClosed && (
+          <div className="space-y-6">
+            <button
+              onClick={() => setPageState("confirm")}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </button>
+
+            <div className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
+              <div className="text-center">
+                <Phone className="h-8 w-8 mx-auto mb-3" style={{ color: primaryColor }} />
+                <h2 className="text-xl font-display font-bold text-foreground">
+                  Seu WhatsApp
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Para que o organizador possa entrar em contato
+                </p>
+              </div>
+
+              {selectedGuest.whatsapp && !whatsappConfirmed ? (
+                <div className="space-y-4">
+                  <p className="text-center text-muted-foreground">
+                    Este ainda é seu número de WhatsApp?
+                  </p>
+                  <div className="text-center text-lg font-medium text-foreground py-3 px-4 rounded-lg bg-muted/50">
+                    {selectedGuest.whatsapp}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant="outline"
+                      className="h-12 rounded-xl"
+                      onClick={() => {
+                        setWhatsappInput("");
+                        setWhatsappConfirmed(true);
+                      }}
+                    >
+                      Não, atualizar
+                    </Button>
+                    <Button
+                      className="h-12 rounded-xl text-white"
+                      style={{ backgroundColor: primaryColor }}
+                      onClick={() => handleConfirmWhatsApp(true)}
+                    >
+                      Sim, é esse
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {whatsappConfirmed && whatsappInput === "" && (
+                    <p className="text-center text-sm text-muted-foreground">Informe seu novo número:</p>
+                  )}
+                  {!selectedGuest.whatsapp && !whatsappConfirmed && (
+                    <p className="text-center text-sm text-muted-foreground">Informe seu número de WhatsApp com código do país:</p>
+                  )}
+                  <Input
+                    value={whatsappInput}
+                    onChange={(e) => setWhatsappInput(e.target.value)}
+                    placeholder="+55 21 99999-9999"
+                    className="h-14 text-lg text-center rounded-xl"
+                    type="tel"
+                  />
+                  <p className="text-xs text-center text-muted-foreground">
+                    Inclua o código do país. Ex: +55 para Brasil
+                  </p>
+                </div>
+              )}
+
               <Button
                 onClick={handleConfirm}
-                disabled={saving}
+                disabled={saving || (!whatsappInput && !selectedGuest.whatsapp)}
                 className="w-full h-14 text-lg font-semibold rounded-xl text-white"
                 style={{ backgroundColor: primaryColor }}
               >

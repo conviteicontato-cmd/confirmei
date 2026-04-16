@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import PhoneInputField from "@/components/ui/phone-input";
+import { ExternalLink } from "lucide-react";
 
 interface AddGuestModalProps {
   open: boolean;
@@ -25,6 +27,14 @@ interface AddGuestModalProps {
   eventId: string;
   onSuccess: () => void;
 }
+
+const normalizeWhatsApp = (value: string): string => {
+  if (!value) return "";
+  const digits = value.replace(/[^0-9+]/g, "");
+  if (digits.startsWith("+")) return digits;
+  if (digits.length >= 10) return "+" + digits;
+  return digits;
+};
 
 const AddGuestModal = ({ open, onOpenChange, eventId, onSuccess }: AddGuestModalProps) => {
   const [name, setName] = useState("");
@@ -35,21 +45,16 @@ const AddGuestModal = ({ open, onOpenChange, eventId, onSuccess }: AddGuestModal
   const [confirmedChildren, setConfirmedChildren] = useState("0");
   const [observations, setObservations] = useState("");
   const [groupName, setGroupName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
-      setName("");
-      setMaxAdults("1");
-      setMaxChildren("0");
-      setStatus("pending");
-      setConfirmedAdults("0");
-      setConfirmedChildren("0");
-      setObservations("");
-      setGroupName("");
-      setNameError("");
+      setName(""); setMaxAdults("1"); setMaxChildren("0");
+      setStatus("pending"); setConfirmedAdults("0"); setConfirmedChildren("0");
+      setObservations(""); setGroupName(""); setWhatsapp(""); setNameError("");
     }
   }, [open]);
 
@@ -65,13 +70,18 @@ const AddGuestModal = ({ open, onOpenChange, eventId, onSuccess }: AddGuestModal
     if (confC > maxC) setConfirmedChildren(maxChildren);
   }, [maxChildren, confirmedChildren]);
 
+  const handleTestWhatsApp = () => {
+    const normalized = normalizeWhatsApp(whatsapp);
+    if (normalized) {
+      const clean = normalized.replace(/[^0-9]/g, "");
+      window.open(`https://wa.me/${clean}`, "_blank");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
-    if (!trimmedName) {
-      setNameError("Nome do convidado é obrigatório");
-      return;
-    }
+    if (!trimmedName) { setNameError("Nome do convidado é obrigatório"); return; }
 
     setSaving(true);
     setNameError("");
@@ -80,16 +90,14 @@ const AddGuestModal = ({ open, onOpenChange, eventId, onSuccess }: AddGuestModal
       const { data: existingGuest, error: checkError } = await supabase
         .from("guests").select("id").eq("event_id", eventId).ilike("name", trimmedName).maybeSingle();
       if (checkError) throw checkError;
-      if (existingGuest) {
-        setNameError("Já existe um convidado com este nome neste evento");
-        setSaving(false);
-        return;
-      }
+      if (existingGuest) { setNameError("Já existe um convidado com este nome neste evento"); setSaving(false); return; }
 
       const maxA = Math.max(0, parseInt(maxAdults) || 0);
       const maxC = Math.max(0, parseInt(maxChildren) || 0);
       const confA = status === "confirmed" ? Math.min(Math.max(0, parseInt(confirmedAdults) || 0), maxA) : 0;
       const confC = status === "confirmed" ? Math.min(Math.max(0, parseInt(confirmedChildren) || 0), maxC) : 0;
+
+      const normalizedWa = normalizeWhatsApp(whatsapp);
 
       const { error } = await supabase.from("guests").insert({
         event_id: eventId,
@@ -101,6 +109,7 @@ const AddGuestModal = ({ open, onOpenChange, eventId, onSuccess }: AddGuestModal
         confirmed_children: confC,
         observations: observations.trim() || null,
         group_name: groupName.trim() || null,
+        whatsapp: normalizedWa || null,
       });
 
       if (error) throw error;
@@ -139,6 +148,26 @@ const AddGuestModal = ({ open, onOpenChange, eventId, onSuccess }: AddGuestModal
             <Label htmlFor="groupName">Grupo/Família</Label>
             <Input id="groupName" value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Ex: Família Silva, Amigos do trabalho" />
             <p className="text-xs text-muted-foreground">Agrupar convidados por família ou grupo</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="whatsapp">WhatsApp</Label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <PhoneInputField
+                  id="whatsapp"
+                  value={whatsapp}
+                  onChange={setWhatsapp}
+                  placeholder="+55 21 99999-9999"
+                />
+              </div>
+              {whatsapp && (
+                <Button type="button" variant="outline" size="icon" className="shrink-0" onClick={handleTestWhatsApp} title="Testar link WhatsApp">
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">Número com código do país (DDI). Ex: +55 para Brasil</p>
           </div>
           
           <div className="grid grid-cols-2 gap-4">

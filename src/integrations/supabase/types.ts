@@ -140,6 +140,7 @@ export type Database = {
           qr_used: boolean | null
           status: string | null
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           checkin_at?: string | null
@@ -161,6 +162,7 @@ export type Database = {
           qr_used?: boolean | null
           status?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           checkin_at?: string | null
@@ -182,6 +184,7 @@ export type Database = {
           qr_used?: boolean | null
           status?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: [
           {

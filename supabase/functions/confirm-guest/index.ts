@@ -12,6 +12,7 @@ interface ConfirmGuestRequest {
   confirmed_children: number;
   companions: Array<{ index: number; name: string }>;
   children: Array<{ index: number; name: string; age: string }>;
+  whatsapp?: string | null;
 }
 
 Deno.serve(async (req) => {
@@ -33,7 +34,7 @@ Deno.serve(async (req) => {
     );
 
     const body: ConfirmGuestRequest = await req.json();
-    const { guest_id, event_id, confirmed_adults, confirmed_children, companions, children } = body;
+    const { guest_id, event_id, confirmed_adults, confirmed_children, companions, children, whatsapp } = body;
 
     console.log(`[confirm-guest] Processing confirmation for guest ${guest_id} in event ${event_id}`);
 
@@ -139,17 +140,26 @@ Deno.serve(async (req) => {
       }))
       .filter(c => c.name.length > 0);
 
+    // Normalize whatsapp
+    const normalizedWhatsapp = whatsapp ? whatsapp.replace(/[^0-9+]/g, '') : undefined;
+
+    // Build update payload
+    const updatePayload: Record<string, unknown> = {
+      status: 'confirmed',
+      confirmed_adults: validatedAdults,
+      confirmed_children: validatedChildren,
+      companions: sanitizedCompanions,
+      children: sanitizedChildren,
+      confirmed_at: new Date().toISOString(),
+    };
+    if (normalizedWhatsapp !== undefined) {
+      updatePayload.whatsapp = normalizedWhatsapp || null;
+    }
+
     // Update the guest record
     const { error: updateError } = await supabase
       .from('guests')
-      .update({
-        status: 'confirmed',
-        confirmed_adults: validatedAdults,
-        confirmed_children: validatedChildren,
-        companions: sanitizedCompanions,
-        children: sanitizedChildren,
-        confirmed_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', guest_id)
       .eq('event_id', event_id);
 
