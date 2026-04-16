@@ -26,7 +26,7 @@ export async function syncParticipants(input: ParticipantInput) {
   }> = [];
 
   // Main guest
-  participants.push({ event_id: eventId, guest_id: guestId, name: guestName, type: "main" });
+  participants.push({ event_id: eventId, guest_id: guestId, name: guestName, type: "main", age: null });
 
   // Adult companions
   const adultCount = Math.max(0, (confirmedAdults || 1) - 1); // minus the main guest
@@ -37,6 +37,7 @@ export async function syncParticipants(input: ParticipantInput) {
       guest_id: guestId,
       name: companion?.name || `Acompanhante ${i + 1}`,
       type: "adult",
+      age: null,
     });
   }
 
@@ -50,6 +51,7 @@ export async function syncParticipants(input: ParticipantInput) {
         guest_id: guestId,
         name: child?.name || `Criança ${i + 1}`,
         type: "child",
+        age: null,
       });
     }
   }
