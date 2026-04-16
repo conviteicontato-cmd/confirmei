@@ -342,6 +342,8 @@ const PublicEvent = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
+      // Fetch individual participants with QR codes
+      await fetchParticipants(selectedGuest.id);
       setPageState("success");
     } catch (error: any) {
       toast({
