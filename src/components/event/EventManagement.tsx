@@ -55,6 +55,7 @@ export interface Guest {
   companions: Json | null;
   children: Json | null;
   group_name: string | null;
+  whatsapp: string | null;
 }
 
 interface Stats {
@@ -97,7 +98,7 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
 
       const { data: guestsData, error: guestsError } = await supabase
         .from("guests")
-        .select("id, name, status, max_adults, max_children, confirmed_adults, confirmed_children, checkin_done, checkin_at, qr_code, observations, companions, children, group_name")
+        .select("id, name, status, max_adults, max_children, confirmed_adults, confirmed_children, checkin_done, checkin_at, qr_code, observations, companions, children, group_name, whatsapp")
         .eq("event_id", eventId)
         .order("name");
 
