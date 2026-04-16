@@ -66,6 +66,8 @@ const PublicEvent = () => {
   const [childrenNames, setChildrenNames] = useState<string[]>([]);
   const [whatsappInput, setWhatsappInput] = useState("");
   const [whatsappConfirmed, setWhatsappConfirmed] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [participants, setParticipants] = useState<Participant[]>([]);
 
   const { toast } = useToast();
 
