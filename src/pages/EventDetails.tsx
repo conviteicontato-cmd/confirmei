@@ -7,6 +7,7 @@ import EventSidebar from "@/components/event/EventSidebar";
 import EventManagement from "@/components/event/EventManagement";
 import CheckinPage from "@/components/event/CheckinPage";
 import EventSettings from "@/components/event/EventSettings";
+import WhatsAppTemplates from "@/components/event/WhatsAppTemplates";
 import { useProfileGuard } from "@/hooks/useProfileGuard";
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +16,7 @@ const EventDetails = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [eventName, setEventName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"convidados" | "checkin" | "configuracoes">("convidados");
+  const [activeTab, setActiveTab] = useState<"convidados" | "checkin" | "configuracoes" | "mensagens">("convidados");
   const navigate = useNavigate();
   const { status: profileStatus, loading: guardLoading } = useProfileGuard(session?.user ?? null);
 
@@ -114,6 +115,8 @@ const EventDetails = () => {
         return <CheckinPage eventId={eventId} eventName={eventName} />;
       case "configuracoes":
         return <EventSettings eventId={eventId} userId={session.user.id} onBack={handleBackFromSettings} />;
+      case "mensagens":
+        return <WhatsAppTemplates eventId={eventId} onBack={handleBackFromSettings} />;
       default:
         return <EventManagement eventId={eventId} userId={session.user.id} />;
     }
