@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { LayoutDashboard, Calendar, LogOut, Users, QrCode, Settings, Menu } from "lucide-react";
+import { LayoutDashboard, Calendar, LogOut, Users, QrCode, Settings, Menu, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -12,8 +12,8 @@ interface EventSidebarProps {
   user: User | null;
   eventName: string;
   eventId: string;
-  activeTab: "convidados" | "checkin" | "configuracoes";
-  onTabChange: (tab: "convidados" | "checkin" | "configuracoes") => void;
+  activeTab: "convidados" | "checkin" | "configuracoes" | "mensagens";
+  onTabChange: (tab: "convidados" | "checkin" | "configuracoes" | "mensagens") => void;
 }
 
 const SidebarContent = ({ 
