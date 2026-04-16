@@ -567,15 +567,20 @@ const PublicEvent = () => {
                         Informe o nome de cada acompanhante
                       </p>
                       {companionNames.map((name, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <span className="text-sm text-muted-foreground w-28">Acompanhante {index + 1}:</span>
-                          <Input
-                            value={name}
-                            onChange={(e) => handleCompanionNameChange(index, e.target.value)}
-                            placeholder="Nome completo"
-                            className="flex-1"
-                            maxLength={100}
-                          />
+                        <div key={index} className="space-y-1">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-muted-foreground w-28">Acompanhante {index + 1}:</span>
+                            <Input
+                              value={name}
+                              onChange={(e) => handleCompanionNameChange(index, e.target.value)}
+                              placeholder="Nome completo"
+                              className={`flex-1 ${validationErrors[`companion_${index}`] ? "border-red-500" : ""}`}
+                              maxLength={100}
+                            />
+                          </div>
+                          {validationErrors[`companion_${index}`] && (
+                            <p className="text-xs text-red-500 ml-[7.5rem]">{validationErrors[`companion_${index}`]}</p>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -639,20 +644,33 @@ const PublicEvent = () => {
                   {childrenNames.map((name, index) => (
                     <div key={index} className="space-y-2">
                       <span className="text-sm font-medium text-foreground">Criança {index + 1}</span>
-                      <Input
-                        value={name}
-                        onChange={(e) => handleChildNameChange(index, e.target.value)}
-                        placeholder="Nome da criança"
-                        className="w-full"
-                        maxLength={100}
-                      />
-                      <Input
-                        value={childrenAges[index] || ""}
-                        onChange={(e) => handleChildAgeChange(index, e.target.value)}
-                        placeholder="Ex: 5 anos"
-                        className="w-full"
-                        maxLength={20}
-                      />
+                      <div>
+                        <Input
+                          value={name}
+                          onChange={(e) => handleChildNameChange(index, e.target.value)}
+                          placeholder="Nome da criança"
+                          className={`w-full ${validationErrors[`child_name_${index}`] ? "border-red-500" : ""}`}
+                          maxLength={100}
+                        />
+                        {validationErrors[`child_name_${index}`] && (
+                          <p className="text-xs text-red-500 mt-1">{validationErrors[`child_name_${index}`]}</p>
+                        )}
+                      </div>
+                      <div>
+                        <Input
+                          value={childrenAges[index] || ""}
+                          onChange={(e) => handleChildAgeChange(index, e.target.value)}
+                          placeholder="Idade (ex: 5)"
+                          className={`w-full ${validationErrors[`child_age_${index}`] ? "border-red-500" : ""}`}
+                          maxLength={2}
+                          type="number"
+                          min="0"
+                          max="17"
+                        />
+                        {validationErrors[`child_age_${index}`] && (
+                          <p className="text-xs text-red-500 mt-1">{validationErrors[`child_age_${index}`]}</p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
