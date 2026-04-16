@@ -36,6 +36,15 @@ interface GuestData {
   whatsapp: string | null;
 }
 
+interface Participant {
+  id: string;
+  name: string | null;
+  type: string;
+  age: string | null;
+  qr_code: string;
+  checked_in_at: string | null;
+}
+
 type PageState = "search" | "confirm" | "whatsapp" | "success";
 
 const PublicEvent = () => {
