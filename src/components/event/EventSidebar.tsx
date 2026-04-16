@@ -139,6 +139,7 @@ const SidebarContent = ({
             <MessageSquare className="h-4 w-4" />
             <span>Mensagens</span>
           </button>
+        </div>
       </nav>
 
       <div className="p-4 border-t border-sidebar-border">
