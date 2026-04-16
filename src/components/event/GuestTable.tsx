@@ -40,7 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Pencil, Trash2, RotateCcw, Send, Clock, QrCode, CheckCircle, MessageSquare, X, MoreVertical, Users, Baby, FolderOpen } from "lucide-react";
+import { Search, Pencil, Trash2, RotateCcw, Send, Clock, QrCode, CheckCircle, MessageSquare, X, MoreVertical, Users, Baby, FolderOpen, Phone } from "lucide-react";
 import { Json } from "@/integrations/supabase/types";
 import type { Guest } from "./EventManagement";
 
@@ -195,11 +195,16 @@ const GuestTable = ({ guests, eventId, webhookUrl, onRefresh, onEdit }: GuestTab
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-foreground truncate">{guest.name}</h3>
-          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1"><Users className="h-3 w-3" />{guest.max_adults || 0}</span>
             <span className="flex items-center gap-1"><Baby className="h-3 w-3" />{guest.max_children || 0}</span>
             {guest.group_name && (
               <span className="flex items-center gap-1"><FolderOpen className="h-3 w-3" />{guest.group_name}</span>
+            )}
+            {guest.whatsapp && (
+              <a href={`https://wa.me/${guest.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-green-600 hover:underline">
+                <Phone className="h-3 w-3" />{guest.whatsapp}
+              </a>
             )}
           </div>
         </div>
