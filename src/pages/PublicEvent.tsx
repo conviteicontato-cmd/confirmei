@@ -165,7 +165,7 @@ const PublicEvent = () => {
       try {
          const { data, error } = await supabase
           .from("guests")
-          .select("id, name, max_adults, max_children, confirmed_adults, confirmed_children, status, qr_code, confirmed_at")
+          .select("id, name, max_adults, max_children, confirmed_adults, confirmed_children, status, qr_code, confirmed_at, whatsapp")
           .eq("event_id", eventId)
           .ilike("name", `%${searchQuery}%`)
           .limit(10);
