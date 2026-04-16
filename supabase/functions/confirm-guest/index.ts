@@ -197,10 +197,11 @@ Deno.serve(async (req) => {
         guest_id: string;
         name: string;
         type: string;
+        age: string | null;
       }> = [];
 
       // Main guest
-      participants.push({ event_id, guest_id, name: updatedGuest?.name || 'Titular', type: 'main' });
+      participants.push({ event_id, guest_id, name: updatedGuest?.name || 'Titular', type: 'main', age: null });
 
       // Adult companions
       for (const companion of sanitizedCompanions) {
@@ -209,6 +210,7 @@ Deno.serve(async (req) => {
           guest_id,
           name: companion.name || `Acompanhante ${companion.index + 1}`,
           type: 'adult',
+          age: null,
         });
       }
 
@@ -220,6 +222,7 @@ Deno.serve(async (req) => {
             guest_id,
             name: child.name || `Criança ${child.index + 1}`,
             type: 'child',
+            age: child.age || null,
           });
         }
       }

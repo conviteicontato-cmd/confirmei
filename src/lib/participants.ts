@@ -22,6 +22,7 @@ export async function syncParticipants(input: ParticipantInput) {
     guest_id: string;
     name: string | null;
     type: "main" | "adult" | "child";
+    age: string | null;
   }> = [];
 
   // Main guest
