@@ -338,6 +338,39 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_message_logs: {
+        Row: {
+          action_type: string
+          event_id: string
+          guest_id: string
+          id: string
+          message_content: string
+          sent_at: string
+          sent_by: string | null
+          template_type: string
+        }
+        Insert: {
+          action_type: string
+          event_id: string
+          guest_id: string
+          id?: string
+          message_content: string
+          sent_at?: string
+          sent_by?: string | null
+          template_type: string
+        }
+        Update: {
+          action_type?: string
+          event_id?: string
+          guest_id?: string
+          id?: string
+          message_content?: string
+          sent_at?: string
+          sent_by?: string | null
+          template_type?: string
+        }
+        Relationships: []
+      }
       whatsapp_templates: {
         Row: {
           created_at: string

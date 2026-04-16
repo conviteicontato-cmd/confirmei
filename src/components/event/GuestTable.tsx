@@ -1,46 +1,27 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
+  Tooltip, TooltipContent, TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, Pencil, Trash2, RotateCcw, Send, Clock, QrCode, CheckCircle, MessageSquare, X, MoreVertical, Users, Baby, FolderOpen, Phone } from "lucide-react";
+import { Search, Pencil, Trash2, RotateCcw, Send, Clock, QrCode, CheckCircle, MessageSquare, X, MoreVertical, Users, Baby, FolderOpen, Phone, Copy, ExternalLink, Mail, CheckCheck } from "lucide-react";
 import { Json } from "@/integrations/supabase/types";
 import type { Guest } from "./EventManagement";
 
@@ -49,6 +30,14 @@ interface WhatsAppTemplate {
   template_type: string;
   title: string;
   message_body: string;
+}
+
+interface MessageLog {
+  id: string;
+  guest_id: string;
+  template_type: string;
+  action_type: string;
+  sent_at: string;
 }
 
 interface GuestTableProps {
@@ -70,15 +59,23 @@ interface GroupStats {
   checkedIn: number;
 }
 
+const TEMPLATE_LABELS: Record<string, string> = {
+  confirmation: "Confirmação",
+  reminder: "Lembrete",
+  extra: "Extra",
+};
+
 const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefresh, onEdit }: GuestTableProps) => {
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("__all__");
+  const [messageFilter, setMessageFilter] = useState("__all__");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [resetId, setResetId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [sendingWebhook, setSendingWebhook] = useState<string | null>(null);
   const [waTemplates, setWaTemplates] = useState<WhatsAppTemplate[]>([]);
+  const [messageLogs, setMessageLogs] = useState<MessageLog[]>([]);
   const { toast } = useToast();
 
   // Fetch WhatsApp templates
@@ -92,23 +89,98 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
       });
   }, [eventId]);
 
-  const buildWhatsAppLink = (guest: Guest, template: WhatsAppTemplate) => {
-    if (!guest.whatsapp) return null;
-    const phone = guest.whatsapp.replace(/[^0-9]/g, "");
+  // Fetch message logs
+  const fetchLogs = useCallback(() => {
+    supabase
+      .from("whatsapp_message_logs")
+      .select("id, guest_id, template_type, action_type, sent_at")
+      .eq("event_id", eventId)
+      .order("sent_at", { ascending: false })
+      .then(({ data }) => {
+        if (data) setMessageLogs(data);
+      });
+  }, [eventId]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
+  const getGuestLogs = useCallback((guestId: string) => {
+    return messageLogs.filter(l => l.guest_id === guestId);
+  }, [messageLogs]);
+
+  const getGuestLogsByType = useCallback((guestId: string) => {
+    const logs = getGuestLogs(guestId);
+    const map: Record<string, MessageLog> = {};
+    for (const log of logs) {
+      if (!map[log.template_type]) map[log.template_type] = log;
+    }
+    return map;
+  }, [getGuestLogs]);
+
+  const buildMessage = (guest: Guest, template: WhatsAppTemplate): string => {
     let msg = template.message_body;
     msg = msg.replace(/\{\{nome_convidado\}\}/g, guest.name);
     msg = msg.replace(/\{\{nome_evento\}\}/g, eventName || "");
     msg = msg.replace(/\{\{data_evento\}\}/g, eventDate ? new Date(eventDate + "T12:00:00").toLocaleDateString("pt-BR") : "");
     msg = msg.replace(/\{\{link_confirmacao\}\}/g, `${window.location.origin}/event/${eventId}`);
-    return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+    return msg;
+  };
+
+  const logMessageAction = async (guest: Guest, template: WhatsAppTemplate, actionType: "open_whatsapp" | "copy_message") => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const msg = buildMessage(guest, template);
+    await supabase.from("whatsapp_message_logs").insert({
+      event_id: eventId,
+      guest_id: guest.id,
+      template_type: template.template_type,
+      message_content: msg,
+      action_type: actionType,
+      sent_by: session?.user?.id || null,
+    });
+    fetchLogs();
+  };
+
+  const handleOpenWhatsApp = async (guest: Guest, template: WhatsAppTemplate) => {
+    if (!guest.whatsapp) {
+      toast({ title: "Sem WhatsApp", description: `${guest.name} não possui número de WhatsApp cadastrado.`, variant: "destructive" });
+      return;
+    }
+    if (!template.message_body.trim()) {
+      toast({ title: "Template vazio", description: `O template "${template.title}" está sem conteúdo. Edite-o na aba Mensagens.`, variant: "destructive" });
+      return;
+    }
+    const phone = guest.whatsapp.replace(/[^0-9]/g, "");
+    const msg = buildMessage(guest, template);
+    const link = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+    window.open(link, "_blank");
+    await logMessageAction(guest, template, "open_whatsapp");
+    toast({ title: "WhatsApp aberto", description: `Mensagem de ${TEMPLATE_LABELS[template.template_type] || template.title} para ${guest.name}.` });
+  };
+
+  const handleCopyMessage = async (guest: Guest, template: WhatsAppTemplate) => {
+    if (!guest.whatsapp) {
+      toast({ title: "Sem WhatsApp", description: `${guest.name} não possui número de WhatsApp cadastrado.`, variant: "destructive" });
+      return;
+    }
+    if (!template.message_body.trim()) {
+      toast({ title: "Template vazio", description: `O template "${template.title}" está sem conteúdo.`, variant: "destructive" });
+      return;
+    }
+    const msg = buildMessage(guest, template);
+    try {
+      await navigator.clipboard.writeText(msg);
+      await logMessageAction(guest, template, "copy_message");
+      toast({ title: "Mensagem copiada", description: `Texto de ${TEMPLATE_LABELS[template.template_type] || template.title} copiado para ${guest.name}.` });
+    } catch {
+      toast({ title: "Erro ao copiar", description: "Não foi possível copiar a mensagem.", variant: "destructive" });
+    }
   };
 
   // Compute unique groups
   const groups = useMemo(() => {
     const set = new Set<string>();
-    guests.forEach(g => {
-      if (g.group_name) set.add(g.group_name);
-    });
+    guests.forEach(g => { if (g.group_name) set.add(g.group_name); });
     return Array.from(set).sort();
   }, [guests]);
 
@@ -118,9 +190,7 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
     const map = new Map<string, GroupStats>();
     guests.forEach(g => {
       const gName = g.group_name || "(Sem grupo)";
-      if (!map.has(gName)) {
-        map.set(gName, { name: gName, total: 0, confirmed: 0, pending: 0, expectedPeople: 0, checkedIn: 0 });
-      }
+      if (!map.has(gName)) map.set(gName, { name: gName, total: 0, confirmed: 0, pending: 0, expectedPeople: 0, checkedIn: 0 });
       const s = map.get(gName)!;
       s.total++;
       if (g.status === "confirmed") s.confirmed++;
@@ -134,12 +204,25 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
   const filteredGuests = useMemo(() => {
     return guests.filter((guest) => {
       const matchesSearch = guest.name.toLowerCase().includes(search.toLowerCase());
-      const matchesGroup = groupFilter === "__all__" 
+      const matchesGroup = groupFilter === "__all__"
         || (groupFilter === "__none__" && !guest.group_name)
         || guest.group_name === groupFilter;
-      return matchesSearch && matchesGroup;
+
+      let matchesMessage = true;
+      if (messageFilter !== "__all__") {
+        const guestLogTypes = new Set(messageLogs.filter(l => l.guest_id === guest.id).map(l => l.template_type));
+        if (messageFilter === "__none__") {
+          matchesMessage = guestLogTypes.size === 0;
+        } else if (messageFilter.startsWith("no_")) {
+          matchesMessage = !guestLogTypes.has(messageFilter.replace("no_", ""));
+        } else {
+          matchesMessage = guestLogTypes.has(messageFilter);
+        }
+      }
+
+      return matchesSearch && matchesGroup && matchesMessage;
     });
-  }, [guests, search, groupFilter]);
+  }, [guests, search, groupFilter, messageFilter, messageLogs]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -204,15 +287,9 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
   };
 
   const getStatusBadge = (guest: Guest) => {
-    if (guest.checkin_done) {
-      return (<Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0"><CheckCircle className="h-3 w-3 mr-1" />Check-in</Badge>);
-    }
-    if (guest.status === "confirmed") {
-      return (<Badge className="bg-success/20 text-success hover:bg-success/30 border-0"><QrCode className="h-3 w-3 mr-1" />Confirmado</Badge>);
-    }
-    if (guest.status === "declined") {
-      return (<Badge variant="destructive"><X className="h-3 w-3 mr-1" />Recusado</Badge>);
-    }
+    if (guest.checkin_done) return (<Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0"><CheckCircle className="h-3 w-3 mr-1" />Check-in</Badge>);
+    if (guest.status === "confirmed") return (<Badge className="bg-success/20 text-success hover:bg-success/30 border-0"><QrCode className="h-3 w-3 mr-1" />Confirmado</Badge>);
+    if (guest.status === "declined") return (<Badge variant="destructive"><X className="h-3 w-3 mr-1" />Recusado</Badge>);
     return (<Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pendente</Badge>);
   };
 
@@ -222,17 +299,90 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
     return date.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   };
 
+  const formatLogDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const MessageIndicators = ({ guestId }: { guestId: string }) => {
+    const logsByType = getGuestLogsByType(guestId);
+    const types = ["confirmation", "reminder", "extra"] as const;
+    const icons = { confirmation: CheckCheck, reminder: Clock, extra: Mail };
+    const colors = { confirmation: "text-green-600", reminder: "text-amber-500", extra: "text-blue-500" };
+
+    return (
+      <div className="flex items-center gap-1">
+        {types.map(type => {
+          const log = logsByType[type];
+          if (!log) return null;
+          const Icon = icons[type];
+          const actionLabel = log.action_type === "open_whatsapp" ? "enviado via WhatsApp" : "copiada";
+          return (
+            <Tooltip key={type}>
+              <TooltipTrigger>
+                <Icon className={`h-3.5 w-3.5 ${colors[type]}`} />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">{TEMPLATE_LABELS[type]} {actionLabel}</p>
+                <p className="text-xs text-muted-foreground">{formatLogDate(log.sent_at)}</p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const WhatsAppMenu = ({ guest }: { guest: Guest }) => {
+    if (waTemplates.length === 0) return null;
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700">
+            <Phone className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          {!guest.whatsapp ? (
+            <DropdownMenuItem disabled className="text-muted-foreground">
+              <Phone className="h-4 w-4 mr-2" />Sem WhatsApp cadastrado
+            </DropdownMenuItem>
+          ) : (
+            waTemplates.map((t) => (
+              <DropdownMenuSub key={t.id}>
+                <DropdownMenuSubTrigger>
+                  <MessageSquare className="h-4 w-4 mr-2 text-green-600" />
+                  {t.title}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => handleOpenWhatsApp(guest, t)}>
+                    <ExternalLink className="h-4 w-4 mr-2" />Abrir no WhatsApp
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleCopyMessage(guest, t)}>
+                    <Copy className="h-4 w-4 mr-2" />Copiar mensagem
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            ))
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
   const GuestCard = ({ guest }: { guest: Guest }) => (
     <div className="card-elegant p-4 space-y-3">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-foreground truncate">{guest.name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-foreground truncate">{guest.name}</h3>
+            <MessageIndicators guestId={guest.id} />
+          </div>
           <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1"><Users className="h-3 w-3" />{guest.max_adults || 0}</span>
             <span className="flex items-center gap-1"><Baby className="h-3 w-3" />{guest.max_children || 0}</span>
-            {guest.group_name && (
-              <span className="flex items-center gap-1"><FolderOpen className="h-3 w-3" />{guest.group_name}</span>
-            )}
+            {guest.group_name && (<span className="flex items-center gap-1"><FolderOpen className="h-3 w-3" />{guest.group_name}</span>)}
             {guest.whatsapp && (
               <a href={`https://wa.me/${guest.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-green-600 hover:underline">
                 <Phone className="h-3 w-3" />{guest.whatsapp}
@@ -250,21 +400,30 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
               <DropdownMenuItem onClick={() => onEdit?.(guest)}><Pencil className="h-4 w-4 mr-2" />Editar</DropdownMenuItem>
               {waTemplates.length > 0 && guest.whatsapp && (
                 <>
-                  {waTemplates.map((t) => {
-                    const link = buildWhatsAppLink(guest, t);
-                    return link ? (
-                      <DropdownMenuItem key={t.id} onClick={() => window.open(link, "_blank")}>
-                        <Phone className="h-4 w-4 mr-2 text-green-600" />{t.title}
-                      </DropdownMenuItem>
-                    ) : null;
-                  })}
+                  <DropdownMenuSeparator />
+                  {waTemplates.map((t) => (
+                    <DropdownMenuSub key={t.id}>
+                      <DropdownMenuSubTrigger>
+                        <MessageSquare className="h-4 w-4 mr-2 text-green-600" />{t.title}
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem onClick={() => handleOpenWhatsApp(guest, t)}>
+                          <ExternalLink className="h-4 w-4 mr-2" />Abrir no WhatsApp
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleCopyMessage(guest, t)}>
+                          <Copy className="h-4 w-4 mr-2" />Copiar mensagem
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  ))}
                 </>
               )}
               {waTemplates.length > 0 && !guest.whatsapp && (
                 <DropdownMenuItem disabled><Phone className="h-4 w-4 mr-2" />Sem WhatsApp</DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setResetId(guest.id)} disabled={guest.status === "pending" && !guest.checkin_done}><RotateCcw className="h-4 w-4 mr-2" />Redefinir</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleResendWebhook(guest)}><Send className="h-4 w-4 mr-2" />Reenviar Make</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleResendWebhook(guest)}><Send className="h-4 w-4 mr-2" />Reenviar Webhook</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setDeleteId(guest.id)} className="text-destructive focus:text-destructive"><Trash2 className="h-4 w-4 mr-2" />Excluir</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -284,29 +443,40 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
 
   return (
     <>
-      {/* Search + Group Filter */}
+      {/* Search + Group Filter + Message Filter */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 rounded-lg"
-          />
+          <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 rounded-lg" />
         </div>
         {groups.length > 0 && (
           <Select value={groupFilter} onValueChange={setGroupFilter}>
-            <SelectTrigger className="w-full sm:w-[220px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="Grupo/Família" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todos os grupos</SelectItem>
               <SelectItem value="__none__">(Sem grupo)</SelectItem>
-              {groups.map(g => (
-                <SelectItem key={g} value={g}>{g}</SelectItem>
-              ))}
+              {groups.map(g => (<SelectItem key={g} value={g}>{g}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        )}
+        {waTemplates.length > 0 && (
+          <Select value={messageFilter} onValueChange={setMessageFilter}>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <MessageSquare className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Filtro mensagens" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas as mensagens</SelectItem>
+              <SelectItem value="__none__">Sem mensagem enviada</SelectItem>
+              <SelectItem value="confirmation">Com confirmação enviada</SelectItem>
+              <SelectItem value="reminder">Com lembrete enviado</SelectItem>
+              <SelectItem value="extra">Com extra enviado</SelectItem>
+              <SelectItem value="no_confirmation">Sem confirmação</SelectItem>
+              <SelectItem value="no_reminder">Sem lembrete</SelectItem>
+              <SelectItem value="no_extra">Sem extra</SelectItem>
             </SelectContent>
           </Select>
         )}
@@ -332,7 +502,7 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
       <div className="lg:hidden space-y-3">
         {filteredGuests.length === 0 ? (
           <div className="card-elegant p-8 text-center text-muted-foreground">
-            {search || groupFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
+            {search || groupFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
           </div>
         ) : (
           filteredGuests.map((guest) => (<GuestCard key={guest.id} guest={guest} />))
@@ -351,6 +521,7 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
               <TableHead className="text-center">Status</TableHead>
               <TableHead className="text-center">Conf.</TableHead>
               <TableHead>WhatsApp</TableHead>
+              <TableHead className="text-center">Msgs</TableHead>
               <TableHead className="text-center">Check-in</TableHead>
               <TableHead className="text-center">Obs.</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -359,17 +530,15 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
           <TableBody>
             {filteredGuests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={groups.length > 0 ? 11 : 10} className="text-center py-8 text-muted-foreground">
-                  {search || groupFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
+                <TableCell colSpan={groups.length > 0 ? 12 : 11} className="text-center py-8 text-muted-foreground">
+                  {search || groupFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
                 </TableCell>
               </TableRow>
             ) : (
               filteredGuests.map((guest) => (
                 <TableRow key={guest.id}>
                   <TableCell className="font-medium">{guest.name}</TableCell>
-                  {groups.length > 0 && (
-                    <TableCell className="text-muted-foreground text-sm">{guest.group_name || "-"}</TableCell>
-                  )}
+                  {groups.length > 0 && (<TableCell className="text-muted-foreground text-sm">{guest.group_name || "-"}</TableCell>)}
                   <TableCell className="text-center">{guest.max_adults || 0}</TableCell>
                   <TableCell className="text-center">{guest.max_children || 0}</TableCell>
                   <TableCell className="text-center">{getStatusBadge(guest)}</TableCell>
@@ -380,6 +549,9 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
                         {guest.whatsapp}
                       </a>
                     ) : (<span className="text-muted-foreground">-</span>)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <MessageIndicators guestId={guest.id} />
                   </TableCell>
                   <TableCell className="text-center text-sm text-muted-foreground">
                     {guest.checkin_done ? (<span className="text-success">{formatCheckinTime(guest.checkin_at)}</span>) : "-"}
@@ -392,29 +564,9 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit?.(guest)}><Pencil className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Editar</TooltipContent></Tooltip>
-                      {waTemplates.length > 0 && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700" disabled={!guest.whatsapp}>
-                              <Phone className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {guest.whatsapp ? waTemplates.map((t) => {
-                              const link = buildWhatsAppLink(guest, t);
-                              return link ? (
-                                <DropdownMenuItem key={t.id} onClick={() => window.open(link, "_blank")}>
-                                  <Phone className="h-4 w-4 mr-2 text-green-600" />{t.title}
-                                </DropdownMenuItem>
-                              ) : null;
-                            }) : (
-                              <DropdownMenuItem disabled>Sem WhatsApp cadastrado</DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                      <WhatsAppMenu guest={guest} />
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setResetId(guest.id)} disabled={guest.status === "pending" && !guest.checkin_done}><RotateCcw className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Redefinir confirmação</TooltipContent></Tooltip>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary" onClick={() => handleResendWebhook(guest)} disabled={sendingWebhook === guest.id}><Send className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Reenviar Make</TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary" onClick={() => handleResendWebhook(guest)} disabled={sendingWebhook === guest.id}><Send className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Reenviar Webhook</TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(guest.id)}><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Deletar</TooltipContent></Tooltip>
                     </div>
                   </TableCell>
