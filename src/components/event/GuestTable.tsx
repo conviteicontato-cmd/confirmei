@@ -627,7 +627,7 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 );
               })
             )}
