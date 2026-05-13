@@ -571,7 +571,7 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
                 const isExpanded = expandedRows.has(guest.id);
                 const colSpan = groups.length > 0 ? 7 : 6;
                 return (
-                  <FragmentRow key={guest.id}>
+                  <Fragment key={guest.id}>
                     <TableRow>
                       <TableCell className="p-2">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(guest.id)}>
