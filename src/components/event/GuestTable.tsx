@@ -362,7 +362,7 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700" title="Enviar WhatsApp" aria-label="Enviar WhatsApp">
             <Phone className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
