@@ -452,30 +452,6 @@ const CheckinPage = ({ eventId, eventName }: CheckinPageProps) => {
         </p>
       </div>
 
-      {/* Mode Toggle */}
-      <div className="flex justify-center mb-6 lg:mb-8">
-        <div className="inline-flex rounded-lg border border-border p-1 bg-muted/30">
-          <button
-            onClick={() => setMode("scanner")}
-            className={`flex items-center gap-2 px-3 lg:px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              mode === "scanner" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <QrCode className="h-4 w-4" />
-            <span className="hidden sm:inline">Scanner</span>
-          </button>
-          <button
-            onClick={() => setMode("lista")}
-            className={`flex items-center gap-2 px-3 lg:px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              mode === "lista" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <List className="h-4 w-4" />
-            <span className="hidden sm:inline">Lista</span>
-          </button>
-        </div>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-3 lg:gap-4 max-w-2xl mx-auto mb-6 lg:mb-8">
         <div className="rounded-xl p-3 lg:p-4 bg-muted/50 flex items-center justify-between">
@@ -516,12 +492,28 @@ const CheckinPage = ({ eventId, eventName }: CheckinPageProps) => {
         </div>
       </div>
 
-      {/* Export */}
+      {/* Mode Toggle */}
       <div className="flex justify-center mb-6 lg:mb-8">
-        <Button variant="outline" onClick={exportCheckinCSV} className="rounded-full" disabled={stats.checkedIn === 0}>
-          <Download className="h-4 w-4 mr-2" />
-          Baixar CSV de Check-ins
-        </Button>
+        <div className="inline-flex rounded-lg border border-border p-1 bg-muted/30">
+          <button
+            onClick={() => setMode("scanner")}
+            className={`flex items-center gap-2 px-3 lg:px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              mode === "scanner" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <QrCode className="h-4 w-4" />
+            <span className="hidden sm:inline">Scanner</span>
+          </button>
+          <button
+            onClick={() => setMode("lista")}
+            className={`flex items-center gap-2 px-3 lg:px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              mode === "lista" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <List className="h-4 w-4" />
+            <span className="hidden sm:inline">Lista</span>
+          </button>
+        </div>
       </div>
 
       {/* Scanner Mode */}
@@ -716,8 +708,16 @@ const CheckinPage = ({ eventId, eventName }: CheckinPageProps) => {
         </div>
       )}
 
+      {/* Export CSV (footer area) */}
+      <div className="flex justify-center mt-12">
+        <Button variant="outline" onClick={exportCheckinCSV} className="rounded-full" disabled={stats.checkedIn === 0}>
+          <Download className="h-4 w-4 mr-2" />
+          Baixar CSV de Check-ins
+        </Button>
+      </div>
+
       {/* Footer */}
-      <div className="text-center mt-12 text-sm text-muted-foreground">
+      <div className="text-center mt-8 text-sm text-muted-foreground">
         © 2027 Convitei. Todos os direitos reservados.
       </div>
 
