@@ -77,7 +77,16 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
   const [sendingWebhook, setSendingWebhook] = useState<string | null>(null);
   const [waTemplates, setWaTemplates] = useState<WhatsAppTemplate[]>([]);
   const [messageLogs, setMessageLogs] = useState<MessageLog[]>([]);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const toggleRow = (id: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   // Fetch WhatsApp templates
   useEffect(() => {
