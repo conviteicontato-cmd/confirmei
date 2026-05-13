@@ -371,19 +371,36 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <button
-          onClick={onBack}
-          className="p-2 hover:bg-accent rounded-lg transition-colors"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-display font-bold text-foreground">
-            {event.name}
-          </h1>
-          <p className="text-muted-foreground">Atualize as informações do evento</p>
+      {/* Sticky header with Save */}
+      <div className="sticky top-0 z-30 -mx-8 px-8 py-4 bg-background/95 backdrop-blur border-b border-border mb-8">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-xl font-display font-bold text-foreground truncate">
+                {event.name}
+              </h1>
+              <p className="text-xs text-muted-foreground hidden sm:block">Atualize as informações do evento</p>
+            </div>
+          </div>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-gold rounded-full px-6 shrink-0"
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            <span className="hidden sm:inline">Salvar Alterações</span>
+            <span className="sm:hidden">Salvar</span>
+          </Button>
         </div>
       </div>
 
