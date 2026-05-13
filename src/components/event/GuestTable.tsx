@@ -21,7 +21,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, Pencil, Trash2, RotateCcw, Send, Clock, QrCode, CheckCircle, MessageSquare, X, MoreVertical, Users, Baby, FolderOpen, Phone, Copy, ExternalLink, Mail, CheckCheck } from "lucide-react";
+import { Search, Pencil, Trash2, RotateCcw, Send, Clock, QrCode, CheckCircle, MessageSquare, X, MoreVertical, Users, Baby, FolderOpen, Phone, Copy, ExternalLink, Mail, CheckCheck, ChevronDown, ChevronRight } from "lucide-react";
 import { Json } from "@/integrations/supabase/types";
 import type { Guest } from "./EventManagement";
 
