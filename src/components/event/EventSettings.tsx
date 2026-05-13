@@ -431,6 +431,119 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
           </div>
         </div>
 
+        {/* Confirmation Control Card */}
+        <div className="card-elegant p-6 space-y-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <CheckCircle2 className="h-4 w-4" />
+            <span className="font-medium text-foreground">Controle de Confirmações</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Gerencie a abertura e fechamento das confirmações de presença
+          </p>
+
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <p className="font-medium text-sm">Confirmações ativas</p>
+              <p className="text-xs text-muted-foreground">
+                {confirmationActive
+                  ? "Convidados podem confirmar presença"
+                  : "Confirmações desativadas manualmente"}
+              </p>
+            </div>
+            <Switch
+              checked={confirmationActive}
+              onCheckedChange={setConfirmationActive}
+            />
+          </div>
+
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <p className="font-medium text-sm">Bloqueio automático por data</p>
+              <p className="text-xs text-muted-foreground">
+                {autoBlock
+                  ? "Confirmações serão bloqueadas após a data limite"
+                  : "Sem prazo para confirmação"}
+              </p>
+            </div>
+            <Switch
+              checked={autoBlock}
+              onCheckedChange={setAutoBlock}
+            />
+          </div>
+
+          {autoBlock && (
+            <div className="space-y-2">
+              <Label htmlFor="confirmationDeadline" className="text-sm font-medium">
+                Data limite para confirmação
+              </Label>
+              <Input
+                id="confirmationDeadline"
+                type="datetime-local"
+                value={confirmationDeadline}
+                onChange={(e) => setConfirmationDeadline(e.target.value)}
+                className="input-elegant"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Check-in Mode Card */}
+        <div className="card-elegant p-6 space-y-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <QrCode className="h-4 w-4" />
+            <span className="font-medium text-foreground">Modo de Check-in</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Configurar como será feito o check-in dos convidados no dia do evento
+          </p>
+
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <p className="font-medium text-sm">Ativar confirmação por QR Code (Scanner)</p>
+              <p className="text-xs text-muted-foreground">
+                {checkinMode === "scanner"
+                  ? "Os pedidos farão check-in via leitura de QR Code"
+                  : "O check-in será feito pela lista manual"}
+              </p>
+            </div>
+            <Switch
+              checked={checkinMode === "scanner"}
+              onCheckedChange={(checked) =>
+                setCheckinMode(checked ? "scanner" : "manual")
+              }
+            />
+          </div>
+
+          <div className="flex items-center gap-2 py-2 px-3 bg-muted rounded-lg">
+            {checkinMode === "scanner" ? (
+              <>
+                <QrCode className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Modo: Leitor de QR Code</span>
+              </>
+            ) : (
+              <>
+                <List className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Modo: Lista Manual</span>
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between py-2 border-t border-border pt-4">
+            <div>
+              <p className="font-medium text-sm">Gerar QR Code para crianças</p>
+              <p className="text-xs text-muted-foreground">
+                {qrChildren
+                  ? "QR Codes serão gerados para adultos e crianças"
+                  : "QR Codes serão gerados apenas para adultos"}
+              </p>
+            </div>
+            <Switch
+              checked={qrChildren}
+              onCheckedChange={setQrChildren}
+            />
+          </div>
+        </div>
+
         {/* Cover Image Card */}
         <div className="card-elegant p-6 space-y-4">
           <div className="space-y-2">
@@ -556,119 +669,6 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
               </p>
             </div>
           )}
-        </div>
-
-        {/* Confirmation Control Card */}
-        <div className="card-elegant p-6 space-y-4">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4" />
-            <span className="font-medium text-foreground">Controle de Confirmações</span>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Gerencie a abertura e fechamento das confirmações de presença
-          </p>
-
-          <div className="flex items-center justify-between py-2">
-            <div>
-              <p className="font-medium text-sm">Confirmações ativas</p>
-              <p className="text-xs text-muted-foreground">
-                {confirmationActive
-                  ? "Convidados podem confirmar presença"
-                  : "Confirmações desativadas manualmente"}
-              </p>
-            </div>
-            <Switch
-              checked={confirmationActive}
-              onCheckedChange={setConfirmationActive}
-            />
-          </div>
-
-          <div className="flex items-center justify-between py-2">
-            <div>
-              <p className="font-medium text-sm">Bloqueio automático por data</p>
-              <p className="text-xs text-muted-foreground">
-                {autoBlock
-                  ? "Confirmações serão bloqueadas após a data limite"
-                  : "Sem prazo para confirmação"}
-              </p>
-            </div>
-            <Switch
-              checked={autoBlock}
-              onCheckedChange={setAutoBlock}
-            />
-          </div>
-
-          {autoBlock && (
-            <div className="space-y-2">
-              <Label htmlFor="confirmationDeadline" className="text-sm font-medium">
-                Data limite para confirmação
-              </Label>
-              <Input
-                id="confirmationDeadline"
-                type="datetime-local"
-                value={confirmationDeadline}
-                onChange={(e) => setConfirmationDeadline(e.target.value)}
-                className="input-elegant"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Check-in Mode Card */}
-        <div className="card-elegant p-6 space-y-4">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <QrCode className="h-4 w-4" />
-            <span className="font-medium text-foreground">Modo de Check-in</span>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Configurar como será feito o check-in dos convidados no dia do evento
-          </p>
-
-          <div className="flex items-center justify-between py-2">
-            <div>
-              <p className="font-medium text-sm">Ativar confirmação por QR Code (Scanner)</p>
-              <p className="text-xs text-muted-foreground">
-                {checkinMode === "scanner"
-                  ? "Os pedidos farão check-in via leitura de QR Code"
-                  : "O check-in será feito pela lista manual"}
-              </p>
-            </div>
-            <Switch
-              checked={checkinMode === "scanner"}
-              onCheckedChange={(checked) =>
-                setCheckinMode(checked ? "scanner" : "manual")
-              }
-            />
-          </div>
-
-          <div className="flex items-center gap-2 py-2 px-3 bg-muted rounded-lg">
-            {checkinMode === "scanner" ? (
-              <>
-                <QrCode className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Modo: Leitor de QR Code</span>
-              </>
-            ) : (
-              <>
-                <List className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Modo: Lista Manual</span>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between py-2 border-t border-border pt-4">
-            <div>
-              <p className="font-medium text-sm">Gerar QR Code para crianças</p>
-              <p className="text-xs text-muted-foreground">
-                {qrChildren
-                  ? "QR Codes serão gerados para adultos e crianças"
-                  : "QR Codes serão gerados apenas para adultos"}
-              </p>
-            </div>
-            <Switch
-              checked={qrChildren}
-              onCheckedChange={setQrChildren}
-            />
-          </div>
         </div>
 
         {/* Public Event Page Card */}
