@@ -806,7 +806,7 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
               <button className="w-full p-6 flex items-center justify-between hover:bg-accent/50 transition-colors">
                 <div className="flex items-center gap-2">
                   <Webhook className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Integração Make (Webhook)</span>
+                  <span className="font-medium">Notificações automáticas (Webhook)</span>
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full ${
                       webhookUrl
