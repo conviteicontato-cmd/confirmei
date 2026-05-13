@@ -900,11 +900,21 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
           </div>
         </Collapsible>
 
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-4">
+        {/* Danger Zone */}
+        <div className="rounded-xl border-2 border-destructive/30 bg-destructive/5 p-6 space-y-4 mt-8">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <h3 className="font-semibold text-destructive">Zona de Perigo</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Ações irreversíveis. Todos os convidados, confirmações e dados associados serão permanentemente removidos.
+          </p>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+              <Button
+                variant="outline"
+                className="border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Excluir Evento
               </Button>
@@ -927,19 +937,6 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="btn-gold rounded-full px-6"
-          >
-            {saving ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Salvar Alterações
-          </Button>
         </div>
       </div>
     </div>
