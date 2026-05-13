@@ -371,19 +371,36 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <button
-          onClick={onBack}
-          className="p-2 hover:bg-accent rounded-lg transition-colors"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-display font-bold text-foreground">
-            {event.name}
-          </h1>
-          <p className="text-muted-foreground">Atualize as informações do evento</p>
+      {/* Sticky header with Save */}
+      <div className="sticky top-0 z-30 -mx-8 px-8 py-4 bg-background/95 backdrop-blur border-b border-border mb-8">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-xl font-display font-bold text-foreground truncate">
+                {event.name}
+              </h1>
+              <p className="text-xs text-muted-foreground hidden sm:block">Atualize as informações do evento</p>
+            </div>
+          </div>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-gold rounded-full px-6 shrink-0"
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            <span className="hidden sm:inline">Salvar Alterações</span>
+            <span className="sm:hidden">Salvar</span>
+          </Button>
         </div>
       </div>
 
@@ -883,11 +900,21 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
           </div>
         </Collapsible>
 
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-4">
+        {/* Danger Zone */}
+        <div className="rounded-xl border-2 border-destructive/30 bg-destructive/5 p-6 space-y-4 mt-8">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <h3 className="font-semibold text-destructive">Zona de Perigo</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Ações irreversíveis. Todos os convidados, confirmações e dados associados serão permanentemente removidos.
+          </p>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+              <Button
+                variant="outline"
+                className="border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Excluir Evento
               </Button>
@@ -910,19 +937,6 @@ const EventSettings = ({ eventId, userId, onBack }: EventSettingsProps) => {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="btn-gold rounded-full px-6"
-          >
-            {saving ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Salvar Alterações
-          </Button>
         </div>
       </div>
     </div>
