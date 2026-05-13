@@ -708,8 +708,16 @@ const CheckinPage = ({ eventId, eventName }: CheckinPageProps) => {
         </div>
       )}
 
+      {/* Export CSV (footer area) */}
+      <div className="flex justify-center mt-12">
+        <Button variant="outline" onClick={exportCheckinCSV} className="rounded-full" disabled={stats.checkedIn === 0}>
+          <Download className="h-4 w-4 mr-2" />
+          Baixar CSV de Check-ins
+        </Button>
+      </div>
+
       {/* Footer */}
-      <div className="text-center mt-12 text-sm text-muted-foreground">
+      <div className="text-center mt-8 text-sm text-muted-foreground">
         © 2027 Convitei. Todos os direitos reservados.
       </div>
 
