@@ -550,64 +550,86 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
+              <TableHead className="w-8"></TableHead>
               <TableHead>Nome</TableHead>
               {groups.length > 0 && <TableHead>Grupo</TableHead>}
-              <TableHead className="text-center">Adultos</TableHead>
-              <TableHead className="text-center">Crianças</TableHead>
               <TableHead className="text-center">Status</TableHead>
-              <TableHead className="text-center">Conf.</TableHead>
+              <TableHead className="text-center">Pessoas</TableHead>
               <TableHead>WhatsApp</TableHead>
-              <TableHead className="text-center">Msgs</TableHead>
-              <TableHead className="text-center">Check-in</TableHead>
-              <TableHead className="text-center">Obs.</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredGuests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={groups.length > 0 ? 12 : 11} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={groups.length > 0 ? 7 : 6} className="text-center py-8 text-muted-foreground">
                   {search || groupFilter !== "__all__" || statusFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredGuests.map((guest) => (
-                <TableRow key={guest.id}>
-                  <TableCell className="font-medium">{guest.name}</TableCell>
-                  {groups.length > 0 && (<TableCell className="text-muted-foreground text-sm">{guest.group_name || "-"}</TableCell>)}
-                  <TableCell className="text-center">{guest.max_adults || 0}</TableCell>
-                  <TableCell className="text-center">{guest.max_children || 0}</TableCell>
-                  <TableCell className="text-center">{getStatusBadge(guest)}</TableCell>
-                  <TableCell className="text-center">{(guest.confirmed_adults || 0) + (guest.confirmed_children || 0)}</TableCell>
-                  <TableCell className="text-sm">
-                    {guest.whatsapp ? (
-                      <a href={`https://wa.me/${guest.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline whitespace-nowrap">
-                        {guest.whatsapp}
-                      </a>
-                    ) : (<span className="text-muted-foreground">-</span>)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <MessageIndicators guestId={guest.id} />
-                  </TableCell>
-                  <TableCell className="text-center text-sm text-muted-foreground">
-                    {guest.checkin_done ? (<span className="text-success">{formatCheckinTime(guest.checkin_at)}</span>) : "-"}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {guest.observations ? (
-                      <Tooltip><TooltipTrigger><MessageSquare className="h-4 w-4 text-muted-foreground mx-auto" /></TooltipTrigger><TooltipContent className="max-w-xs"><p className="text-sm">{guest.observations}</p></TooltipContent></Tooltip>
-                    ) : (<span className="text-muted-foreground">-</span>)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit?.(guest)}><Pencil className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Editar</TooltipContent></Tooltip>
-                      <WhatsAppMenu guest={guest} />
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setResetId(guest.id)} disabled={guest.status === "pending" && !guest.checkin_done}><RotateCcw className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Redefinir confirmação</TooltipContent></Tooltip>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary" onClick={() => handleResendWebhook(guest)} disabled={sendingWebhook === guest.id}><Send className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Reenviar Webhook</TooltipContent></Tooltip>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(guest.id)}><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Deletar</TooltipContent></Tooltip>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              filteredGuests.map((guest) => {
+                const isExpanded = expandedRows.has(guest.id);
+                const colSpan = groups.length > 0 ? 7 : 6;
+                return (
+                  <>
+                    <TableRow key={guest.id}>
+                      <TableCell className="p-2">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(guest.id)}>
+                          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                      </TableCell>
+                      <TableCell className="font-medium">{guest.name}</TableCell>
+                      {groups.length > 0 && (<TableCell className="text-muted-foreground text-sm">{guest.group_name || "-"}</TableCell>)}
+                      <TableCell className="text-center">{getStatusBadge(guest)}</TableCell>
+                      <TableCell className="text-center text-sm whitespace-nowrap">
+                        {(guest.max_adults || 0)}A / {(guest.max_children || 0)}C
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {guest.whatsapp ? (
+                          <a href={`https://wa.me/${guest.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline whitespace-nowrap">
+                            {guest.whatsapp}
+                          </a>
+                        ) : (<span className="text-muted-foreground">-</span>)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit?.(guest)}><Pencil className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Editar</TooltipContent></Tooltip>
+                          <WhatsAppMenu guest={guest} />
+                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setResetId(guest.id)} disabled={guest.status === "pending" && !guest.checkin_done}><RotateCcw className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Redefinir confirmação</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary" onClick={() => handleResendWebhook(guest)} disabled={sendingWebhook === guest.id}><Send className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Reenviar Webhook</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(guest.id)}><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Deletar</TooltipContent></Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded && (
+                      <TableRow key={`${guest.id}-details`} className="bg-muted/20 hover:bg-muted/20">
+                        <TableCell colSpan={colSpan} className="py-3">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm px-2">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Confirmados</p>
+                              <p className="font-medium">{(guest.confirmed_adults || 0) + (guest.confirmed_children || 0)} pessoas</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Mensagens</p>
+                              <div className="min-h-5"><MessageIndicators guestId={guest.id} /></div>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Check-in</p>
+                              <p className={guest.checkin_done ? "text-success font-medium" : "text-muted-foreground"}>
+                                {guest.checkin_done ? formatCheckinTime(guest.checkin_at) : "—"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Observações</p>
+                              <p className="text-foreground">{guest.observations || "—"}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
+                );
+              })
             )}
           </TableBody>
         </Table>
