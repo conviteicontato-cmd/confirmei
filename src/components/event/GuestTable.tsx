@@ -571,8 +571,8 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
                 const isExpanded = expandedRows.has(guest.id);
                 const colSpan = groups.length > 0 ? 7 : 6;
                 return (
-                  <>
-                    <TableRow key={guest.id}>
+                  <FragmentRow key={guest.id}>
+                    <TableRow>
                       <TableCell className="p-2">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(guest.id)}>
                           {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
