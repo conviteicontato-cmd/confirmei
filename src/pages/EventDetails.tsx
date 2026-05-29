@@ -16,7 +16,7 @@ const EventDetails = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [eventName, setEventName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"convidados" | "checkin" | "configuracoes" | "mensagens">("convidados");
+  const [activeTab, setActiveTab] = useState<"convidados" | "checkin" | "dashboard" | "configuracoes" | "mensagens">("convidados");
   const navigate = useNavigate();
   const { status: profileStatus, loading: guardLoading } = useProfileGuard(session?.user ?? null);
 
