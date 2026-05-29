@@ -181,7 +181,7 @@ const EventSidebar = ({ user, eventName, eventId, activeTab, onTabChange }: Even
     setOpen(false);
   };
 
-  const handleTabChange = (tab: "convidados" | "checkin" | "configuracoes" | "mensagens") => {
+  const handleTabChange = (tab: EventTab) => {
     onTabChange(tab);
     setOpen(false);
   };
