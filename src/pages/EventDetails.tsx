@@ -6,6 +6,7 @@ import { Loader2, Clock } from "lucide-react";
 import EventSidebar from "@/components/event/EventSidebar";
 import EventManagement from "@/components/event/EventManagement";
 import CheckinPage from "@/components/event/CheckinPage";
+import EventDashboard from "@/components/event/EventDashboard";
 import EventSettings from "@/components/event/EventSettings";
 import WhatsAppTemplates from "@/components/event/WhatsAppTemplates";
 import { useProfileGuard } from "@/hooks/useProfileGuard";
@@ -16,7 +17,7 @@ const EventDetails = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [eventName, setEventName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"convidados" | "checkin" | "configuracoes" | "mensagens">("convidados");
+  const [activeTab, setActiveTab] = useState<"convidados" | "checkin" | "dashboard" | "configuracoes" | "mensagens">("convidados");
   const navigate = useNavigate();
   const { status: profileStatus, loading: guardLoading } = useProfileGuard(session?.user ?? null);
 
@@ -113,6 +114,8 @@ const EventDetails = () => {
         return <EventManagement eventId={eventId} userId={session.user.id} />;
       case "checkin":
         return <CheckinPage eventId={eventId} eventName={eventName} />;
+      case "dashboard":
+        return <EventDashboard eventId={eventId} eventName={eventName} onBack={handleBackFromSettings} />;
       case "configuracoes":
         return <EventSettings eventId={eventId} userId={session.user.id} onBack={handleBackFromSettings} />;
       case "mensagens":

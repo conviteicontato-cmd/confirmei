@@ -1,19 +1,21 @@
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { LayoutDashboard, Calendar, LogOut, Users, QrCode, Settings, Menu, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Calendar, LogOut, Users, QrCode, Settings, Menu, MessageSquare, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
+type EventTab = "convidados" | "checkin" | "dashboard" | "configuracoes" | "mensagens";
+
 interface EventSidebarProps {
   user: User | null;
   eventName: string;
   eventId: string;
-  activeTab: "convidados" | "checkin" | "configuracoes" | "mensagens";
-  onTabChange: (tab: "convidados" | "checkin" | "configuracoes" | "mensagens") => void;
+  activeTab: EventTab;
+  onTabChange: (tab: EventTab) => void;
 }
 
 const SidebarContent = ({ 
@@ -24,7 +26,7 @@ const SidebarContent = ({
 }: { 
   eventName: string;
   activeTab: string;
-  onTabChange: (tab: "convidados" | "checkin" | "configuracoes" | "mensagens") => void;
+  onTabChange: (tab: EventTab) => void;
   onNavigate: (path: string) => void;
 }) => {
   const navigate = useNavigate();
@@ -39,7 +41,7 @@ const SidebarContent = ({
     navigate("/auth");
   };
 
-  const handleTabClick = (tab: "convidados" | "checkin" | "configuracoes" | "mensagens") => {
+  const handleTabClick = (tab: EventTab) => {
     onTabChange(tab);
   };
 
@@ -111,6 +113,21 @@ const SidebarContent = ({
           </button>
 
           <button
+            onClick={() => handleTabClick("dashboard")}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ml-2",
+              activeTab === "dashboard" ? "font-medium" : ""
+            )}
+            style={{
+              color: activeTab === "dashboard" ? 'hsl(var(--sidebar-accent-foreground))' : 'hsl(var(--sidebar-foreground) / 0.7)',
+              background: activeTab === "dashboard" ? 'hsl(var(--sidebar-accent))' : 'transparent',
+            }}
+          >
+            <BarChart2 className="h-4 w-4" />
+            <span>Dashboard</span>
+          </button>
+
+          <button
             onClick={() => handleTabClick("configuracoes")}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ml-2",
@@ -164,7 +181,7 @@ const EventSidebar = ({ user, eventName, eventId, activeTab, onTabChange }: Even
     setOpen(false);
   };
 
-  const handleTabChange = (tab: "convidados" | "checkin" | "configuracoes" | "mensagens") => {
+  const handleTabChange = (tab: EventTab) => {
     onTabChange(tab);
     setOpen(false);
   };
