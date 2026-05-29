@@ -315,8 +315,8 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
           ) : (
             <div className="space-y-6">
               {/* User Info Header */}
-              <div className="bg-muted/50 rounded-lg p-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                   <div>
                     <h3 className="text-lg font-semibold">{user.full_name}</h3>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -328,7 +328,7 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
                       Cadastro: {format(new Date(user.created_at), "dd/MM/yyyy", { locale: ptBR })}
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex flex-wrap items-center gap-2 md:justify-end">
                     <Badge
                       variant="outline"
                       className={
@@ -341,34 +341,76 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
                     >
                       {user.status === "approved" ? "Aprovado" : user.status === "pending" ? "Pendente" : "Rejeitado"}
                     </Badge>
-                    {user.is_super_admin || user.roles?.includes("super_admin") ? (
-                      <div className="text-sm">
-                        <span className="font-medium text-primary">∞ Ilimitado</span>
-                      </div>
-                    ) : (
-                      <div className="text-sm space-y-1">
-                        <div>
-                          <span className="text-muted-foreground">Contratados: </span>
-                          <span className="font-medium">{user.events_contracted || 0}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Utilizados: </span>
-                          <span className="font-medium">{user.events_used || 0}</span>
-                        </div>
-                        <div className={`${(user.available_events || 0) === 0 ? "text-destructive" : "text-primary"}`}>
-                          <span className="text-muted-foreground">Disponíveis: </span>
-                          <span className="font-medium">{user.available_events || 0}</span>
-                        </div>
-                      </div>
-                    )}
-                    {!user.is_super_admin && !user.roles?.includes("super_admin") && (
-                      <Button size="sm" variant="outline" onClick={() => setAdjustLimitOpen(true)}>
-                        <Settings className="h-4 w-4 mr-1" />
-                        Gerenciar créditos
-                      </Button>
+                    {creditAlert && (
+                      <Badge variant="outline" className={creditAlert.className}>
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        {creditAlert.label}
+                      </Badge>
                     )}
                   </div>
                 </div>
+
+                {isSuper ? (
+                  <div className="text-sm">
+                    <span className="font-medium text-primary">∞ Eventos ilimitados</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* 4-card credit panel */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-amber-600">
+                          <FileText className="h-4 w-4" />
+                          <span className="text-xs font-medium">Créditos Comuns</span>
+                        </div>
+                        <div className="text-2xl font-bold text-amber-600 mt-1">{creditsStandard}</div>
+                      </div>
+                      <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-primary">
+                          <QrCode className="h-4 w-4" />
+                          <span className="text-xs font-medium">Créditos QR</span>
+                        </div>
+                        <div className="text-2xl font-bold text-primary mt-1">{creditsQr}</div>
+                      </div>
+                      <div className="bg-muted/40 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="text-xs font-medium">Eventos Realizados</span>
+                        </div>
+                        <div className="text-2xl font-bold mt-1">{realizedEvents}</div>
+                      </div>
+                      <div className="bg-muted/40 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span className="text-xs font-medium">Eventos Futuros</span>
+                        </div>
+                        <div className="text-2xl font-bold mt-1">{futureEvents}</div>
+                      </div>
+                    </div>
+
+                    {/* Credit action buttons */}
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 border-amber-500/40 text-amber-600 hover:bg-amber-500/10"
+                        onClick={() => openCreditsModal("standard")}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Créditos Comuns
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 border-primary/40 text-primary hover:bg-primary/10"
+                        onClick={() => openCreditsModal("qr")}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Créditos QR
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Tabs */}
