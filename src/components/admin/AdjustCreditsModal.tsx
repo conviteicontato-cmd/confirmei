@@ -166,7 +166,7 @@ const AdjustCreditsModal = ({ open, onOpenChange, user, onCreditsUpdated, initia
   }
 
   // Section for one credit type
-  const CreditSection = ({ type }: { type: "standard" | "qr" }) => {
+  const renderCreditSection = (type: "standard" | "qr") => {
     const isStandard = type === "standard";
     const current = isStandard ? currentStandard : currentQr;
     const preview = isStandard ? previewStandard : previewQr;
