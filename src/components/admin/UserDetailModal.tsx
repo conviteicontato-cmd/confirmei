@@ -710,6 +710,19 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
         }}
       />
 
+      {/* Adjust Credits Modal */}
+      <AdjustCreditsModal
+        open={adjustCreditsOpen}
+        onOpenChange={setAdjustCreditsOpen}
+        user={user ? { ...user, credits_standard: creditsStandard, credits_qr: creditsQr } : null}
+        initialTab={creditsInitialTab}
+        onCreditsUpdated={() => {
+          fetchUserData();
+          onUserUpdated();
+        }}
+      />
+
+
       {/* Delete Event Confirmation */}
       <AlertDialog open={!!deleteEventId} onOpenChange={() => setDeleteEventId(null)}>
         <AlertDialogContent>
