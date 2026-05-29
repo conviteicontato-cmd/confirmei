@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -12,8 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, RotateCcw, AlertTriangle } from "lucide-react";
+import { Loader2, Save, FileText, QrCode, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface UserProfile {
@@ -21,10 +23,13 @@ interface UserProfile {
   user_id: string;
   full_name: string;
   email: string;
-  events_contracted: number;
-  events_used: number;
-  available_events: number;
+  events_contracted?: number;
+  events_used?: number;
+  available_events?: number;
+  credits_standard?: number;
+  credits_qr?: number;
   is_super_admin?: boolean;
+  roles?: string[];
 }
 
 interface Props {
@@ -32,67 +37,68 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   user: UserProfile | null;
   onCreditsUpdated: () => void;
+  initialTab?: "standard" | "qr";
 }
 
-const AdjustCreditsModal = ({ open, onOpenChange, user, onCreditsUpdated }: Props) => {
-  const [activeTab, setActiveTab] = useState<"add" | "reset">("add");
-  const [addAmount, setAddAmount] = useState("1");
-  const [resetAmount, setResetAmount] = useState("");
+const AdjustCreditsModal = ({ open, onOpenChange, user, onCreditsUpdated, initialTab = "standard" }: Props) => {
+  const [currentStandard, setCurrentStandard] = useState(0);
+  const [currentQr, setCurrentQr] = useState(0);
+  const [totalEvents, setTotalEvents] = useState(0);
+  const [addStandard, setAddStandard] = useState("0");
+  const [addQr, setAddQr] = useState("0");
   const [reason, setReason] = useState("");
+  const [resetUsage, setResetUsage] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"standard" | "qr">(initialTab);
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
   const { toast } = useToast();
 
-  const handleAddCredits = async () => {
-    if (!user) return;
-    
-    const amount = parseInt(addAmount, 10);
-    if (isNaN(amount) || amount <= 0) {
-      toast({
-        title: "Erro",
-        description: "Informe uma quantidade válida",
-        variant: "destructive",
-      });
-      return;
-    }
+  const isSuperAdmin = user?.is_super_admin || user?.roles?.includes("super_admin");
 
-    setLoading(true);
+  const fetchCreditDetails = useCallback(async () => {
+    if (!user) return;
+    setFetching(true);
     try {
-      const newTotal = (user.events_contracted || 0) + amount;
-      
-      const { error } = await supabase.functions.invoke("admin-operations", {
-        body: {
-          action: "update_user_credits",
-          userId: user.user_id,
-          eventsContracted: newTotal,
-          reason: reason || `Adicionado +${amount} eventos`,
-        },
+      const { data, error } = await supabase.functions.invoke("admin-operations", {
+        body: { action: "get_user_credit_details", userId: user.user_id },
       });
-
       if (error) throw error;
-
-      toast({ title: `+${amount} eventos adicionados com sucesso` });
-      onCreditsUpdated();
-      onOpenChange(false);
-      resetForm();
-    } catch (err) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível adicionar créditos",
-        variant: "destructive",
-      });
+      setCurrentStandard(data?.credits_standard ?? 0);
+      setCurrentQr(data?.credits_qr ?? 0);
+      setTotalEvents((data?.upcoming_events?.length || 0) + (data?.past_events?.length || 0));
+    } catch {
+      // Fallback to whatever the user object carries
+      setCurrentStandard(user.credits_standard ?? 0);
+      setCurrentQr(user.credits_qr ?? 0);
+      setTotalEvents(user.events_used ?? 0);
     } finally {
-      setLoading(false);
+      setFetching(false);
     }
-  };
+  }, [user]);
 
-  const handleResetCredits = async () => {
+  useEffect(() => {
+    if (open && user && !isSuperAdmin) {
+      setAddStandard("0");
+      setAddQr("0");
+      setReason("");
+      setResetUsage(false);
+      setMobileTab(initialTab);
+      fetchCreditDetails();
+    }
+  }, [open, user, isSuperAdmin, initialTab, fetchCreditDetails]);
+
+  const addStandardNum = Math.max(0, parseInt(addStandard, 10) || 0);
+  const addQrNum = Math.max(0, parseInt(addQr, 10) || 0);
+  const previewStandard = currentStandard + addStandardNum;
+  const previewQr = currentQr + addQrNum;
+
+  const handleSave = async () => {
     if (!user) return;
-    
-    const newContracted = parseInt(resetAmount, 10);
-    if (isNaN(newContracted) || newContracted < 0) {
+
+    if (addStandardNum === 0 && addQrNum === 0) {
       toast({
-        title: "Erro",
-        description: "Informe uma quantidade válida",
+        title: "Nada para salvar",
+        description: "Informe uma quantidade para adicionar em pelo menos um tipo",
         variant: "destructive",
       });
       return;
@@ -102,46 +108,42 @@ const AdjustCreditsModal = ({ open, onOpenChange, user, onCreditsUpdated }: Prop
     try {
       const { error } = await supabase.functions.invoke("admin-operations", {
         body: {
-          action: "reset_user_credits",
+          action: "adjust_user_credits",
           userId: user.user_id,
-          newContracted,
-          reason: reason || "Reset de créditos - novo ciclo",
+          creditsStandard: previewStandard,
+          creditsQr: previewQr,
+          resetEvents: resetUsage,
+          reason:
+            reason ||
+            `Ajuste de créditos (+${addStandardNum} comum, +${addQrNum} QR)${resetUsage ? " • reset de uso" : ""}`,
         },
       });
 
       if (error) throw error;
 
-      toast({ title: "Créditos resetados com sucesso" });
+      toast({ title: "Créditos atualizados com sucesso" });
       onCreditsUpdated();
       onOpenChange(false);
-      resetForm();
-    } catch (err) {
+    } catch {
       toast({
         title: "Erro",
-        description: "Não foi possível resetar créditos",
+        description: "Não foi possível atualizar os créditos",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  };
-
-  const resetForm = () => {
-    setAddAmount("1");
-    setResetAmount("");
-    setReason("");
-    setActiveTab("add");
   };
 
   if (!user) return null;
 
   // Super Admin check
-  if (user.is_super_admin) {
+  if (isSuperAdmin) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Gerenciar Créditos de Eventos</DialogTitle>
+            <DialogTitle>Gerenciar Créditos</DialogTitle>
           </DialogHeader>
           <div className="py-8 text-center">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -163,152 +165,167 @@ const AdjustCreditsModal = ({ open, onOpenChange, user, onCreditsUpdated }: Prop
     );
   }
 
-  const availableEvents = Math.max(0, (user.events_contracted || 0) - (user.events_used || 0));
-  const previewAfterAdd = availableEvents + (parseInt(addAmount, 10) || 0);
-  const previewAfterReset = parseInt(resetAmount, 10) || 0;
+  // Section for one credit type
+  const renderCreditSection = (type: "standard" | "qr") => {
+    const isStandard = type === "standard";
+    const current = isStandard ? currentStandard : currentQr;
+    const preview = isStandard ? previewStandard : previewQr;
+    const value = isStandard ? addStandard : addQr;
+    const setValue = isStandard ? setAddStandard : setAddQr;
+
+    return (
+      <div className="rounded-lg border p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {isStandard ? (
+              <FileText className="h-4 w-4 text-amber-600" />
+            ) : (
+              <QrCode className="h-4 w-4 text-primary" />
+            )}
+            <span className="font-medium text-sm">
+              {isStandard ? "Formulário Comum" : "Formulário com QR Code"}
+            </span>
+          </div>
+          {isStandard ? (
+            <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/30" variant="outline">
+              Padrão
+            </Badge>
+          ) : (
+            <Badge className="bg-primary/10 text-primary border-primary/30" variant="outline">
+              QR Code
+            </Badge>
+          )}
+        </div>
+
+        <div className="text-center bg-muted/40 rounded-lg py-3">
+          <div className={`text-3xl font-bold ${isStandard ? "text-amber-600" : "text-primary"}`}>
+            {current}
+          </div>
+          <div className="text-xs text-muted-foreground">Créditos atuais</div>
+        </div>
+
+        <div>
+          <Label htmlFor={`add-${type}`}>Adicionar quantidade</Label>
+          <Input
+            id={`add-${type}`}
+            type="number"
+            min="0"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+
+        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+          <p className="text-sm">
+            <span className="text-muted-foreground">Após adição: </span>
+            <span className="font-medium text-green-600">{preview} créditos</span>
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Gerenciar Créditos de Eventos</DialogTitle>
+          <DialogTitle>Gerenciar Créditos</DialogTitle>
           <DialogDescription>
-            Ajuste os eventos disponíveis para <strong>{user.full_name}</strong>
+            Ajuste os créditos por tipo para <strong>{user.full_name}</strong>
           </DialogDescription>
         </DialogHeader>
 
-        {/* Current Status */}
-        <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-primary">{user.events_contracted || 0}</div>
-              <div className="text-xs text-muted-foreground">Contratados</div>
+        {/* Summary */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-center">
+            <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
+              <FileText className="h-4 w-4" />
             </div>
-            <div>
-              <div className="text-2xl font-bold">{user.events_used || 0}</div>
-              <div className="text-xs text-muted-foreground">Utilizados</div>
+            <div className="text-xl font-bold text-amber-600">
+              {fetching ? "…" : currentStandard}
             </div>
-            <div>
-              <div className={`text-2xl font-bold ${availableEvents === 0 ? "text-destructive" : "text-green-600"}`}>
-                {availableEvents}
-              </div>
-              <div className="text-xs text-muted-foreground">Disponíveis</div>
+            <div className="text-xs text-muted-foreground">Comuns disponíveis</div>
+          </div>
+          <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 text-center">
+            <div className="flex items-center justify-center gap-1 text-primary mb-1">
+              <QrCode className="h-4 w-4" />
             </div>
+            <div className="text-xl font-bold text-primary">{fetching ? "…" : currentQr}</div>
+            <div className="text-xs text-muted-foreground">QR disponíveis</div>
+          </div>
+          <div className="bg-muted/40 rounded-lg p-3 text-center">
+            <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+              <Calendar className="h-4 w-4" />
+            </div>
+            <div className="text-xl font-bold">{fetching ? "…" : totalEvents}</div>
+            <div className="text-xs text-muted-foreground">Eventos criados</div>
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "add" | "reset")}>
-          <TabsList className="w-full">
-            <TabsTrigger value="add" className="flex-1">
-              <Plus className="h-4 w-4 mr-1" />
-              Adicionar
-            </TabsTrigger>
-            <TabsTrigger value="reset" className="flex-1">
-              <RotateCcw className="h-4 w-4 mr-1" />
-              Resetar
-            </TabsTrigger>
-          </TabsList>
+        {/* Side-by-side on desktop, tabs on mobile */}
+        <div className="hidden sm:grid sm:grid-cols-2 gap-4">
+          {renderCreditSection("standard")}
+          {renderCreditSection("qr")}
+        </div>
 
-          <TabsContent value="add" className="space-y-4 mt-4">
-            <div>
-              <Label htmlFor="addAmount">Quantidade de eventos a adicionar</Label>
-              <Input
-                id="addAmount"
-                type="number"
-                min="1"
-                value={addAmount}
-                onChange={(e) => setAddAmount(e.target.value)}
-                className="mt-1"
-              />
-            </div>
+        <div className="sm:hidden">
+          <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as "standard" | "qr")}>
+            <TabsList className="w-full">
+              <TabsTrigger value="standard" className="flex-1">
+                <FileText className="h-4 w-4 mr-1" />
+                Comum
+              </TabsTrigger>
+              <TabsTrigger value="qr" className="flex-1">
+                <QrCode className="h-4 w-4 mr-1" />
+                QR Code
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="standard" className="mt-4">
+              {renderCreditSection("standard")}
+            </TabsContent>
+            <TabsContent value="qr" className="mt-4">
+              {renderCreditSection("qr")}
+            </TabsContent>
+          </Tabs>
+        </div>
 
-            {/* Preview */}
-            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
-              <p className="text-sm">
-                <span className="text-muted-foreground">Após adicionar: </span>
-                <span className="font-medium text-green-600">{previewAfterAdd} eventos disponíveis</span>
-              </p>
-            </div>
+        {/* Reason */}
+        <div>
+          <Label htmlFor="reason">Motivo (opcional)</Label>
+          <Textarea
+            id="reason"
+            placeholder="Ex: Pacote premium, renovação..."
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className="mt-1"
+            rows={2}
+          />
+        </div>
 
-            <div>
-              <Label htmlFor="reason">Motivo (opcional)</Label>
-              <Textarea
-                id="reason"
-                placeholder="Ex: Pacote premium, renovação..."
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                className="mt-1"
-                rows={2}
-              />
-            </div>
+        {/* Reset usage */}
+        <div className="flex items-start gap-2 rounded-lg border p-3">
+          <Checkbox
+            id="resetUsage"
+            checked={resetUsage}
+            onCheckedChange={(v) => setResetUsage(!!v)}
+            className="mt-0.5"
+          />
+          <Label htmlFor="resetUsage" className="font-normal cursor-pointer">
+            Resetar contadores de uso
+            <span className="block text-xs text-muted-foreground">
+              Zera os eventos utilizados antes de aplicar os novos créditos.
+            </span>
+          </Label>
+        </div>
 
-            <Button onClick={handleAddCredits} disabled={loading} className="w-full">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-              Adicionar +{addAmount || 0} Eventos
-            </Button>
-          </TabsContent>
-
-          <TabsContent value="reset" className="space-y-4 mt-4">
-            <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-              <p className="text-sm text-muted-foreground">
-                O reset irá zerar os eventos utilizados e definir um novo total de eventos contratados.
-                Use para iniciar um novo ciclo ou plano.
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="resetAmount">Novo total de eventos contratados</Label>
-              <Input
-                id="resetAmount"
-                type="number"
-                min="0"
-                placeholder={String(user.events_contracted || 0)}
-                value={resetAmount}
-                onChange={(e) => setResetAmount(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-
-            {/* Preview */}
-            {resetAmount && (
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Após reset: </span>
-                  <span className="font-medium text-blue-600">
-                    {previewAfterReset} contratados • 0 utilizados • {previewAfterReset} disponíveis
-                  </span>
-                </p>
-              </div>
-            )}
-
-            <div>
-              <Label htmlFor="resetReason">Motivo (opcional)</Label>
-              <Textarea
-                id="resetReason"
-                placeholder="Ex: Novo ciclo, renovação de plano..."
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                className="mt-1"
-                rows={2}
-              />
-            </div>
-
-            <Button 
-              onClick={handleResetCredits} 
-              disabled={loading || !resetAmount} 
-              variant="outline"
-              className="w-full"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
-              Resetar Créditos
-            </Button>
-          </TabsContent>
-        </Tabs>
-
-        <DialogFooter className="mt-2">
+        <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
+          </Button>
+          <Button onClick={handleSave} disabled={loading || fetching}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            Salvar Créditos
           </Button>
         </DialogFooter>
       </DialogContent>

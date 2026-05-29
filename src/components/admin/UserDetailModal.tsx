@@ -14,18 +14,22 @@ import {
   Calendar, 
   Mail, 
   Clock, 
-  Users, 
   CheckCircle,
-  XCircle,
   Loader2,
   Trash2,
-  Settings,
-  Activity
+  Activity,
+  FileText,
+  QrCode,
+  CreditCard,
+  AlertTriangle,
+  Plus
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
 import AdjustLimitModal from "./AdjustLimitModal";
+import AdjustCreditsModal from "./AdjustCreditsModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +56,8 @@ interface UserProfile {
   events_contracted?: number;
   events_used?: number;
   available_events?: number;
+  credits_standard?: number;
+  credits_qr?: number;
   is_super_admin?: boolean;
 }
 
@@ -62,6 +68,7 @@ interface UserEvent {
   created_at: string;
   guest_count: number;
   checkin_count: number;
+  credit_type?: string | null;
 }
 
 interface LimitHistory {
@@ -82,6 +89,26 @@ interface UserActivity {
   details: Record<string, unknown> | null;
 }
 
+interface CreditDetails {
+  credits_standard: number;
+  credits_qr: number;
+  events_used: number;
+  events_contracted: number;
+  events_standard_count: number;
+  events_qr_count: number;
+}
+
+interface CreditAuditEntry {
+  id: string;
+  created_at: string;
+  details: {
+    previous?: { credits_standard?: number; credits_qr?: number };
+    new?: { credits_standard?: number; credits_qr?: number };
+    reason?: string;
+    reset_events?: boolean;
+  } | null;
+}
+
 interface Props {
   user: UserProfile | null;
   open: boolean;
@@ -94,8 +121,12 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
   const [events, setEvents] = useState<UserEvent[]>([]);
   const [limitHistory, setLimitHistory] = useState<LimitHistory[]>([]);
   const [activities, setActivities] = useState<UserActivity[]>([]);
+  const [creditDetails, setCreditDetails] = useState<CreditDetails | null>(null);
+  const [creditAudit, setCreditAudit] = useState<CreditAuditEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [adjustLimitOpen, setAdjustLimitOpen] = useState(false);
+  const [adjustCreditsOpen, setAdjustCreditsOpen] = useState(false);
+  const [creditsInitialTab, setCreditsInitialTab] = useState<"standard" | "qr">("standard");
   const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
   const [deletingEvent, setDeletingEvent] = useState(false);
   const { toast } = useToast();
@@ -105,6 +136,11 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
       fetchUserData();
     }
   }, [open, user]);
+
+  const openCreditsModal = (tab: "standard" | "qr") => {
+    setCreditsInitialTab(tab);
+    setAdjustCreditsOpen(true);
+  };
 
   const fetchUserData = async () => {
     if (!user) return;
@@ -128,6 +164,31 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
         body: { action: "get_audit_logs", filters: { user_id: user.user_id }, limit: 50 },
       });
       setActivities(activitiesData?.logs || []);
+
+      // Fetch differentiated credit details
+      const { data: creditData } = await supabase.functions.invoke("admin-operations", {
+        body: { action: "get_user_credit_details", userId: user.user_id },
+      });
+      if (creditData) {
+        setCreditDetails({
+          credits_standard: creditData.credits_standard ?? 0,
+          credits_qr: creditData.credits_qr ?? 0,
+          events_used: creditData.events_used ?? 0,
+          events_contracted: creditData.events_contracted ?? 0,
+          events_standard_count: creditData.events_standard_count ?? 0,
+          events_qr_count: creditData.events_qr_count ?? 0,
+        });
+      }
+
+      // Fetch credit adjustment history (audit logs by entity)
+      const { data: creditAuditData } = await supabase.functions.invoke("admin-operations", {
+        body: {
+          action: "get_audit_logs",
+          filters: { entity_id: user.user_id, action: "adjust_user_credits" },
+          limit: 50,
+        },
+      });
+      setCreditAudit(creditAuditData?.logs || []);
     } catch (err) {
       console.error("Error fetching user data:", err);
     } finally {
@@ -192,6 +253,26 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
   const totalCheckins = events.reduce((acc, e) => acc + (e.checkin_count || 0), 0);
   const averageAttendance = totalGuests > 0 ? Math.round((totalCheckins / totalGuests) * 100) : 0;
 
+  const isSuper = user?.is_super_admin || user?.roles?.includes("super_admin");
+  const creditsStandard = creditDetails?.credits_standard ?? user?.credits_standard ?? 0;
+  const creditsQr = creditDetails?.credits_qr ?? user?.credits_qr ?? 0;
+  const realizedEvents = past.length;
+  const futureEvents = upcoming.length;
+
+  const creditAlert = (() => {
+    if (isSuper) return null;
+    if (creditsStandard === 0 && creditsQr === 0) {
+      return { label: "Sem créditos", className: "bg-destructive/10 text-destructive border-destructive/30" };
+    }
+    if (creditsStandard === 0 && creditsQr > 0) {
+      return { label: "Sem créditos comuns", className: "bg-amber-500/10 text-amber-600 border-amber-500/30" };
+    }
+    if (creditsQr === 0 && creditsStandard > 0) {
+      return { label: "Sem créditos QR", className: "bg-amber-500/10 text-amber-600 border-amber-500/30" };
+    }
+    return null;
+  })();
+
   const formatLimit = (limit: number | null) => {
     if (limit === null) return "Padrão do sistema";
     if (limit === -1) return "Ilimitado";
@@ -231,8 +312,8 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
           ) : (
             <div className="space-y-6">
               {/* User Info Header */}
-              <div className="bg-muted/50 rounded-lg p-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                   <div>
                     <h3 className="text-lg font-semibold">{user.full_name}</h3>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -244,7 +325,7 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
                       Cadastro: {format(new Date(user.created_at), "dd/MM/yyyy", { locale: ptBR })}
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex flex-wrap items-center gap-2 md:justify-end">
                     <Badge
                       variant="outline"
                       className={
@@ -257,34 +338,76 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
                     >
                       {user.status === "approved" ? "Aprovado" : user.status === "pending" ? "Pendente" : "Rejeitado"}
                     </Badge>
-                    {user.is_super_admin || user.roles?.includes("super_admin") ? (
-                      <div className="text-sm">
-                        <span className="font-medium text-primary">∞ Ilimitado</span>
-                      </div>
-                    ) : (
-                      <div className="text-sm space-y-1">
-                        <div>
-                          <span className="text-muted-foreground">Contratados: </span>
-                          <span className="font-medium">{user.events_contracted || 0}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Utilizados: </span>
-                          <span className="font-medium">{user.events_used || 0}</span>
-                        </div>
-                        <div className={`${(user.available_events || 0) === 0 ? "text-destructive" : "text-primary"}`}>
-                          <span className="text-muted-foreground">Disponíveis: </span>
-                          <span className="font-medium">{user.available_events || 0}</span>
-                        </div>
-                      </div>
-                    )}
-                    {!user.is_super_admin && !user.roles?.includes("super_admin") && (
-                      <Button size="sm" variant="outline" onClick={() => setAdjustLimitOpen(true)}>
-                        <Settings className="h-4 w-4 mr-1" />
-                        Gerenciar créditos
-                      </Button>
+                    {creditAlert && (
+                      <Badge variant="outline" className={creditAlert.className}>
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        {creditAlert.label}
+                      </Badge>
                     )}
                   </div>
                 </div>
+
+                {isSuper ? (
+                  <div className="text-sm">
+                    <span className="font-medium text-primary">∞ Eventos ilimitados</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* 4-card credit panel */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-amber-600">
+                          <FileText className="h-4 w-4" />
+                          <span className="text-xs font-medium">Créditos Comuns</span>
+                        </div>
+                        <div className="text-2xl font-bold text-amber-600 mt-1">{creditsStandard}</div>
+                      </div>
+                      <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-primary">
+                          <QrCode className="h-4 w-4" />
+                          <span className="text-xs font-medium">Créditos QR</span>
+                        </div>
+                        <div className="text-2xl font-bold text-primary mt-1">{creditsQr}</div>
+                      </div>
+                      <div className="bg-muted/40 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="text-xs font-medium">Eventos Realizados</span>
+                        </div>
+                        <div className="text-2xl font-bold mt-1">{realizedEvents}</div>
+                      </div>
+                      <div className="bg-muted/40 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span className="text-xs font-medium">Eventos Futuros</span>
+                        </div>
+                        <div className="text-2xl font-bold mt-1">{futureEvents}</div>
+                      </div>
+                    </div>
+
+                    {/* Credit action buttons */}
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 border-amber-500/40 text-amber-600 hover:bg-amber-500/10"
+                        onClick={() => openCreditsModal("standard")}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Créditos Comuns
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 border-primary/40 text-primary hover:bg-primary/10"
+                        onClick={() => openCreditsModal("qr")}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Créditos QR
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Tabs */}
@@ -294,6 +417,12 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
                     <Calendar className="h-4 w-4 mr-1" />
                     Eventos ({events.length})
                   </TabsTrigger>
+                  {!isSuper && (
+                    <TabsTrigger value="credits" className="flex-1">
+                      <CreditCard className="h-4 w-4 mr-1" />
+                      Créditos
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="history" className="flex-1">
                     <Clock className="h-4 w-4 mr-1" />
                     Histórico de Limites
@@ -330,7 +459,18 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
                         {upcoming.map((event) => (
                           <div key={event.id} className="flex items-center justify-between p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
                             <div>
-                              <div className="font-medium">{event.name}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium">{event.name}</span>
+                                {event.credit_type === "qr" ? (
+                                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px] px-1.5 py-0">
+                                    QR Code
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 text-[10px] px-1.5 py-0">
+                                    Padrão
+                                  </Badge>
+                                )}
+                              </div>
                               <div className="text-sm text-muted-foreground">
                                 {format(new Date(event.event_date), "dd/MM/yyyy", { locale: ptBR })} • {event.guest_count} convidados
                               </div>
@@ -357,7 +497,18 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
                         {past.map((event) => (
                           <div key={event.id} className="flex items-center justify-between p-3 bg-muted/30 border rounded-lg">
                             <div>
-                              <div className="font-medium text-muted-foreground">{event.name}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-muted-foreground">{event.name}</span>
+                                {event.credit_type === "qr" ? (
+                                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px] px-1.5 py-0">
+                                    QR Code
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 text-[10px] px-1.5 py-0">
+                                    Padrão
+                                  </Badge>
+                                )}
+                              </div>
                               <div className="text-sm text-muted-foreground">
                                 {format(new Date(event.event_date), "dd/MM/yyyy", { locale: ptBR })} • {event.checkin_count}/{event.guest_count} check-ins
                               </div>
@@ -382,6 +533,103 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
                     </div>
                   )}
                 </TabsContent>
+
+                {/* Credits Tab */}
+                {!isSuper && (
+                  <TabsContent value="credits" className="space-y-5 mt-4">
+                    {/* Standard usage progress */}
+                    {(() => {
+                      const stdUsed = creditDetails?.events_standard_count ?? 0;
+                      const qrUsed = creditDetails?.events_qr_count ?? 0;
+                      const stdTotal = stdUsed + creditsStandard;
+                      const qrTotal = qrUsed + creditsQr;
+                      const stdPct = stdTotal > 0 ? Math.round((stdUsed / stdTotal) * 100) : 0;
+                      const qrPct = qrTotal > 0 ? Math.round((qrUsed / qrTotal) * 100) : 0;
+                      return (
+                        <div className="space-y-4">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="flex items-center gap-1.5 text-amber-600 font-medium">
+                                <FileText className="h-4 w-4" /> Formulário Comum
+                              </span>
+                              <span className="text-muted-foreground">
+                                {stdUsed} usados / {stdTotal} total • {creditsStandard} restantes
+                              </span>
+                            </div>
+                            <Progress value={stdPct} className="h-2" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="flex items-center gap-1.5 text-primary font-medium">
+                                <QrCode className="h-4 w-4" /> Formulário com QR Code
+                              </span>
+                              <span className="text-muted-foreground">
+                                {qrUsed} usados / {qrTotal} total • {creditsQr} restantes
+                              </span>
+                            </div>
+                            <Progress value={qrPct} className="h-2" />
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Credit adjustment history */}
+                    <div>
+                      <h4 className="font-medium text-sm text-muted-foreground mb-2">
+                        Histórico de ajustes ({creditAudit.length})
+                      </h4>
+                      {creditAudit.length > 0 ? (
+                        <div className="space-y-2">
+                          {creditAudit.map((entry) => {
+                            const prev = entry.details?.previous || {};
+                            const next = entry.details?.new || {};
+                            const stdChanged = (prev.credits_standard ?? 0) !== (next.credits_standard ?? 0);
+                            const qrChanged = (prev.credits_qr ?? 0) !== (next.credits_qr ?? 0);
+                            return (
+                              <div key={entry.id} className="p-3 bg-muted/30 rounded-lg space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                                    {stdChanged && (
+                                      <span className="flex items-center gap-1 text-amber-600">
+                                        <FileText className="h-3.5 w-3.5" />
+                                        {prev.credits_standard ?? 0} → {next.credits_standard ?? 0}
+                                      </span>
+                                    )}
+                                    {qrChanged && (
+                                      <span className="flex items-center gap-1 text-primary">
+                                        <QrCode className="h-3.5 w-3.5" />
+                                        {prev.credits_qr ?? 0} → {next.credits_qr ?? 0}
+                                      </span>
+                                    )}
+                                    {!stdChanged && !qrChanged && (
+                                      <span className="text-muted-foreground">Ajuste de créditos</span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {format(new Date(entry.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                                  </div>
+                                </div>
+                                {entry.details?.reason && (
+                                  <div className="text-sm text-muted-foreground">
+                                    Motivo: {entry.details.reason}
+                                  </div>
+                                )}
+                                {entry.details?.reset_events && (
+                                  <div className="text-xs text-amber-600">Contadores de uso resetados</div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          Nenhum ajuste de crédito registrado
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                )}
+
 
                 {/* Limit History Tab */}
                 <TabsContent value="history" className="mt-4">
@@ -458,6 +706,19 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
           onUserUpdated();
         }}
       />
+
+      {/* Adjust Credits Modal */}
+      <AdjustCreditsModal
+        open={adjustCreditsOpen}
+        onOpenChange={setAdjustCreditsOpen}
+        user={user ? { ...user, credits_standard: creditsStandard, credits_qr: creditsQr } : null}
+        initialTab={creditsInitialTab}
+        onCreditsUpdated={() => {
+          fetchUserData();
+          onUserUpdated();
+        }}
+      />
+
 
       {/* Delete Event Confirmation */}
       <AlertDialog open={!!deleteEventId} onOpenChange={() => setDeleteEventId(null)}>

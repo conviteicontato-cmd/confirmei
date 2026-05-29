@@ -462,6 +462,9 @@ Deno.serve(async (req) => {
         if (filters?.user_id) {
           query = query.eq("user_id", filters.user_id);
         }
+        if (filters?.entity_id) {
+          query = query.eq("entity_id", filters.entity_id);
+        }
 
         const { data: logs, error } = await query;
 
@@ -760,7 +763,7 @@ Deno.serve(async (req) => {
 
         const { data: events } = await adminClient
           .from("events")
-          .select("id, name, event_date, created_at")
+          .select("id, name, event_date, created_at, credit_type")
           .eq("user_id", userId)
           .order("event_date", { ascending: false });
 
@@ -891,7 +894,7 @@ Deno.serve(async (req) => {
       }
 
       case "adjust_user_credits": {
-        const { userId, creditsStandard, creditsQr, reason } = params;
+        const { userId, creditsStandard, creditsQr, reason, resetEvents } = params;
 
         // Block managing credits for super admins
         const { data: targetRoles } = await adminClient
@@ -927,9 +930,17 @@ Deno.serve(async (req) => {
         const newStandard = Number.isFinite(creditsStandard) ? Math.max(0, Math.trunc(creditsStandard)) : oldStandard;
         const newQr = Number.isFinite(creditsQr) ? Math.max(0, Math.trunc(creditsQr)) : oldQr;
 
+        const updatePayload: Record<string, number> = {
+          credits_standard: newStandard,
+          credits_qr: newQr,
+        };
+        if (resetEvents) {
+          updatePayload.events_used = 0;
+        }
+
         const { error: updateError } = await adminClient
           .from("profiles")
-          .update({ credits_standard: newStandard, credits_qr: newQr })
+          .update(updatePayload)
           .eq("user_id", userId);
 
         if (updateError) throw updateError;
@@ -943,6 +954,7 @@ Deno.serve(async (req) => {
           details: {
             previous: { credits_standard: oldStandard, credits_qr: oldQr },
             new: { credits_standard: newStandard, credits_qr: newQr },
+            reset_events: !!resetEvents,
             reason,
           },
         });
@@ -962,7 +974,7 @@ Deno.serve(async (req) => {
         // Profile credit balances
         const { data: profile, error: profileError } = await adminClient
           .from("profiles")
-          .select("credits_standard, credits_qr")
+          .select("credits_standard, credits_qr, events_used, events_contracted")
           .eq("user_id", userId)
           .single();
 
@@ -990,6 +1002,8 @@ Deno.serve(async (req) => {
         result = {
           credits_standard: profile?.credits_standard ?? 0,
           credits_qr: profile?.credits_qr ?? 0,
+          events_used: profile?.events_used ?? 0,
+          events_contracted: profile?.events_contracted ?? 0,
           events_standard_count: standardCount,
           events_qr_count: qrCount,
           upcoming_events: upcomingEvents,
