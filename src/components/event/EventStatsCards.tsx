@@ -57,7 +57,7 @@ const EventStatsCards = ({ stats }: EventStatsCardsProps) => {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4 mb-6 lg:mb-8">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4 mb-6 lg:mb-8">
       {statsCards.map((stat) => (
         <div 
           key={stat.label} 
