@@ -462,6 +462,9 @@ Deno.serve(async (req) => {
         if (filters?.user_id) {
           query = query.eq("user_id", filters.user_id);
         }
+        if (filters?.entity_id) {
+          query = query.eq("entity_id", filters.entity_id);
+        }
 
         const { data: logs, error } = await query;
 
