@@ -113,6 +113,21 @@ const SidebarContent = ({
           </button>
 
           <button
+            onClick={() => handleTabClick("dashboard")}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ml-2",
+              activeTab === "dashboard" ? "font-medium" : ""
+            )}
+            style={{
+              color: activeTab === "dashboard" ? 'hsl(var(--sidebar-accent-foreground))' : 'hsl(var(--sidebar-foreground) / 0.7)',
+              background: activeTab === "dashboard" ? 'hsl(var(--sidebar-accent))' : 'transparent',
+            }}
+          >
+            <BarChart2 className="h-4 w-4" />
+            <span>Dashboard</span>
+          </button>
+
+          <button
             onClick={() => handleTabClick("configuracoes")}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 ml-2",
