@@ -114,6 +114,8 @@ const EventDetails = () => {
         return <EventManagement eventId={eventId} userId={session.user.id} />;
       case "checkin":
         return <CheckinPage eventId={eventId} eventName={eventName} />;
+      case "dashboard":
+        return <EventDashboard eventId={eventId} eventName={eventName} onBack={handleBackFromSettings} />;
       case "configuracoes":
         return <EventSettings eventId={eventId} userId={session.user.id} onBack={handleBackFromSettings} />;
       case "mensagens":
