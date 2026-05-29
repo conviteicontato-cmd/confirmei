@@ -41,7 +41,7 @@ const SidebarContent = ({
     navigate("/auth");
   };
 
-  const handleTabClick = (tab: "convidados" | "checkin" | "configuracoes" | "mensagens") => {
+  const handleTabClick = (tab: EventTab) => {
     onTabChange(tab);
   };
 
