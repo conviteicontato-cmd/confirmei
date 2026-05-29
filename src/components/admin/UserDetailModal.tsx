@@ -500,7 +500,18 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
                         {past.map((event) => (
                           <div key={event.id} className="flex items-center justify-between p-3 bg-muted/30 border rounded-lg">
                             <div>
-                              <div className="font-medium text-muted-foreground">{event.name}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-muted-foreground">{event.name}</span>
+                                {event.credit_type === "qr" ? (
+                                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px] px-1.5 py-0">
+                                    QR Code
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 text-[10px] px-1.5 py-0">
+                                    Padrão
+                                  </Badge>
+                                )}
+                              </div>
                               <div className="text-sm text-muted-foreground">
                                 {format(new Date(event.event_date), "dd/MM/yyyy", { locale: ptBR })} • {event.checkin_count}/{event.guest_count} check-ins
                               </div>
