@@ -1,11 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,15 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import CoverImageUpload from "./CoverImageUpload";
-import {
-  ArrowLeft,
-  Mail,
-  QrCode,
-  List,
-  Loader2,
-  Save,
-  AlertTriangle,
-} from "lucide-react";
+import { ArrowLeft, Mail, QrCode, List, Loader2, Save, AlertTriangle } from "lucide-react";
 
 interface NewEventModalProps {
   open: boolean;
@@ -31,12 +18,7 @@ interface NewEventModalProps {
   onEventCreated: () => void;
 }
 
-const NewEventModal = ({
-  open,
-  onOpenChange,
-  userId,
-  onEventCreated,
-}: NewEventModalProps) => {
+const NewEventModal = ({ open, onOpenChange, userId, onEventCreated }: NewEventModalProps) => {
   const [name, setName] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [shortMessage, setShortMessage] = useState("");
@@ -49,6 +31,8 @@ const NewEventModal = ({
   const [loading, setLoading] = useState(false);
   const [canCreate, setCanCreate] = useState(true);
   const [checkingLimit, setCheckingLimit] = useState(false);
+  const [creditsStandard, setCreditsStandard] = useState<number>(0);
+  const [creditsQr, setCreditsQr] = useState<number>(0);
   const { toast } = useToast();
   const { settings } = useSystemSettings();
 
@@ -56,14 +40,17 @@ const NewEventModal = ({
   useEffect(() => {
     if (open && userId) {
       checkEventLimit();
+      fetchUserCredits();
     }
   }, [open, userId]);
 
   const checkEventLimit = async () => {
     setCheckingLimit(true);
+    const creditType = checkinMode === "qr" ? "qr" : "standard";
     try {
       const { data, error } = await supabase.rpc("can_user_create_event", {
         _user_id: userId,
+        _credit_type: creditType,
       });
 
       if (error) throw error;
@@ -77,16 +64,54 @@ const NewEventModal = ({
     }
   };
 
+  const fetchUserCredits = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("credits_standard, credits_qr")
+        .eq("id", userId)
+        .single();
+      if (error) throw error;
+      if (data) {
+        setCreditsStandard(data.credits_standard ?? 0);
+        setCreditsQr(data.credits_qr ?? 0);
+      }
+    } catch (err) {
+      console.error("Error fetching user credits:", err);
+    }
+  };
+
+  // Re-check limit when checkinMode changes
+  useEffect(() => {
+    if (open && userId) {
+      checkEventLimit();
+    }
+  }, [checkinMode]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!canCreate) {
-      toast({
-        title: "Sem eventos disponíveis",
-        description: "Você não possui eventos disponíveis no momento. Entre em contato com o administrador para liberar novos eventos.",
-        variant: "destructive",
-      });
-      return;
+      if (checkinMode === "qr" && creditsQr === 0) {
+        toast({
+          title: "Sem créditos QR Code",
+          description: "Você não tem créditos para formulário com QR Code. Entre em contato para adquirir.",
+          variant: "destructive",
+        });
+      } else if (checkinMode === "manual" && creditsStandard === 0) {
+        toast({
+          title: "Sem créditos",
+          description: "Você não tem créditos para formulário comum. Entre em contato para adquirir.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Sem eventos disponíveis",
+          description:
+            "Você não possui eventos disponíveis no momento. Entre em contato com o administrador para liberar novos eventos.",
+          variant: "destructive",
+        });
+      }
     }
 
     if (!name.trim() || !eventDate) {
@@ -101,6 +126,7 @@ const NewEventModal = ({
     setLoading(true);
 
     try {
+      const creditType = checkinMode === "qr" ? "qr" : "standard";
       const { error } = await supabase.from("events").insert({
         user_id: userId,
         name: name.trim(),
@@ -112,6 +138,7 @@ const NewEventModal = ({
         host_email: hostEmail.trim() || null,
         email_notifications: emailNotifications,
         checkin_mode: checkinMode,
+        credit_type: creditType,
       });
 
       if (error) throw error;
@@ -127,6 +154,16 @@ const NewEventModal = ({
       setEmailNotifications(false);
       setCheckinMode("manual");
 
+      // Consume the credit after successful event creation
+      try {
+        await supabase.rpc("consume_event_credit", {
+          _user_id: userId,
+          _credit_type: creditType,
+        });
+        await fetchUserCredits();
+      } catch (creditErr) {
+        console.error("Error consuming credit:", creditErr);
+      }
       onEventCreated();
     } catch (error: any) {
       toast({
@@ -144,19 +181,12 @@ const NewEventModal = ({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => onOpenChange(false)}
-              className="p-1 hover:bg-muted rounded-md transition-colors"
-            >
+            <button onClick={() => onOpenChange(false)} className="p-1 hover:bg-muted rounded-md transition-colors">
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
-              <DialogTitle className="font-display text-xl">
-                Novo Evento
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground">
-                Configure seu novo evento
-              </p>
+              <DialogTitle className="font-display text-xl">Novo Evento</DialogTitle>
+              <p className="text-sm text-muted-foreground">Configure seu novo evento</p>
             </div>
           </div>
         </DialogHeader>
@@ -226,9 +256,7 @@ const NewEventModal = ({
           {/* Cover Image */}
           <div className="space-y-2">
             <Label>Foto de Capa</Label>
-            <p className="text-xs text-muted-foreground">
-              Tamanho ideal: 1920 × 1080px (proporção 16:9)
-            </p>
+            <p className="text-xs text-muted-foreground">Tamanho ideal: 1920 × 1080px (proporção 16:9)</p>
             <CoverImageUpload
               userId={userId}
               coverUrl={coverImageUrl}
@@ -298,19 +326,14 @@ const NewEventModal = ({
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium">
-                    Receber confirmações por e-mail
-                  </p>
+                  <p className="text-sm font-medium">Receber confirmações por e-mail</p>
                   <p className="text-xs text-muted-foreground">
                     {emailNotifications
                       ? "Você receberá um e-mail a cada nova confirmação"
                       : "Notificações desativadas"}
                   </p>
                 </div>
-                <Switch
-                  checked={emailNotifications}
-                  onCheckedChange={setEmailNotifications}
-                />
+                <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
               </div>
             </div>
           </div>
@@ -322,16 +345,13 @@ const NewEventModal = ({
               <div>
                 <p className="font-medium">Modo de Check-in</p>
                 <p className="text-sm text-muted-foreground">
-                  Configurar como será feito o check-in dos convidados no dia do
-                  evento
+                  Configurar como será feito o check-in dos convidados no dia do evento
                 </p>
               </div>
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">
-                  Ativar confirmação por QR Code (Scanner)
-                </p>
+                <p className="text-sm font-medium">Ativar confirmação por QR Code (Scanner)</p>
                 <p className="text-xs text-muted-foreground">
                   {checkinMode === "qr"
                     ? "Os convidados farão check-in via leitura de QR Code"
@@ -340,33 +360,29 @@ const NewEventModal = ({
               </div>
               <Switch
                 checked={checkinMode === "qr"}
-                onCheckedChange={(checked) =>
-                  setCheckinMode(checked ? "qr" : "manual")
-                }
+                onCheckedChange={(checked) => setCheckinMode(checked ? "qr" : "manual")}
               />
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-              {checkinMode === "qr" ? (
-                <>
-                  <QrCode className="h-4 w-4" />
-                  <span>Modo: Scanner QR</span>
-                </>
-              ) : (
-                <>
-                  <List className="h-4 w-4" />
-                  <span>Modo: Lista Manual</span>
-                </>
-              )}
+            <div className="flex items-center gap-4 text-sm bg-muted/50 p-3 rounded-lg">
+              <span className={`font-medium ${checkinMode === "manual" ? "text-foreground" : "text-muted-foreground"}`}>
+                Comuns:{" "}
+                <span className={creditsStandard === 0 ? "text-destructive font-bold" : "text-green-600 font-bold"}>
+                  {creditsStandard} disponíveis
+                </span>
+              </span>
+              <span className="text-muted-foreground/50">|</span>
+              <span className={`font-medium ${checkinMode === "qr" ? "text-foreground" : "text-muted-foreground"}`}>
+                QR Code:{" "}
+                <span className={creditsQr === 0 ? "text-destructive font-bold" : "text-green-600 font-bold"}>
+                  {creditsQr} disponíveis
+                </span>
+              </span>
             </div>
           </div>
 
           {/* Submit */}
           <div className="flex justify-end pt-4">
-            <Button
-              type="submit"
-              disabled={loading}
-              className="btn-gold rounded-full px-8"
-            >
+            <Button type="submit" disabled={loading} className="btn-gold rounded-full px-8">
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
