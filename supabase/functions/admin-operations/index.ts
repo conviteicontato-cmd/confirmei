@@ -971,7 +971,7 @@ Deno.serve(async (req) => {
         // Profile credit balances
         const { data: profile, error: profileError } = await adminClient
           .from("profiles")
-          .select("credits_standard, credits_qr")
+          .select("credits_standard, credits_qr, events_used, events_contracted")
           .eq("user_id", userId)
           .single();
 
@@ -999,6 +999,8 @@ Deno.serve(async (req) => {
         result = {
           credits_standard: profile?.credits_standard ?? 0,
           credits_qr: profile?.credits_qr ?? 0,
+          events_used: profile?.events_used ?? 0,
+          events_contracted: profile?.events_contracted ?? 0,
           events_standard_count: standardCount,
           events_qr_count: qrCount,
           upcoming_events: upcomingEvents,
