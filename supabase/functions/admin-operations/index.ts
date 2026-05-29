@@ -763,7 +763,7 @@ Deno.serve(async (req) => {
 
         const { data: events } = await adminClient
           .from("events")
-          .select("id, name, event_date, created_at")
+          .select("id, name, event_date, created_at, credit_type")
           .eq("user_id", userId)
           .order("event_date", { ascending: false });
 
