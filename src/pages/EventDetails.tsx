@@ -6,6 +6,7 @@ import { Loader2, Clock } from "lucide-react";
 import EventSidebar from "@/components/event/EventSidebar";
 import EventManagement from "@/components/event/EventManagement";
 import CheckinPage from "@/components/event/CheckinPage";
+import EventDashboard from "@/components/event/EventDashboard";
 import EventSettings from "@/components/event/EventSettings";
 import WhatsAppTemplates from "@/components/event/WhatsAppTemplates";
 import { useProfileGuard } from "@/hooks/useProfileGuard";
