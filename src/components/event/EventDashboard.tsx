@@ -184,8 +184,6 @@ const EventDashboard = ({ eventId, eventName, onBack }: EventDashboardProps) => 
             if (g.checkin_at) {
               const d = new Date(g.checkin_at);
               const hh = String(d.getHours()).padStart(2, "0");
-              const mm = String(d.getMinutes()).padStart(2, "0");
-              const key = `${hh}:${mm.charAt(0)}0`; // group by 10-min? -> use hour bucket
               const hourKey = `${hh}:00`;
               hourMap.set(hourKey, (hourMap.get(hourKey) ?? 0) + adults + children);
             }
