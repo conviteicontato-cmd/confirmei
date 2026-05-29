@@ -58,6 +58,7 @@ export type Database = {
           confirmation_deadline: string | null
           cover_image_url: string | null
           created_at: string
+          credit_type: string | null
           email_notifications: boolean | null
           event_date: string
           host_email: string | null
@@ -82,6 +83,7 @@ export type Database = {
           confirmation_deadline?: string | null
           cover_image_url?: string | null
           created_at?: string
+          credit_type?: string | null
           email_notifications?: boolean | null
           event_date: string
           host_email?: string | null
@@ -106,6 +108,7 @@ export type Database = {
           confirmation_deadline?: string | null
           cover_image_url?: string | null
           created_at?: string
+          credit_type?: string | null
           email_notifications?: boolean | null
           event_date?: string
           host_email?: string | null
@@ -270,6 +273,8 @@ export type Database = {
           approved_by: string | null
           avatar_url: string | null
           created_at: string
+          credits_qr: number
+          credits_standard: number
           email: string
           event_limit: number | null
           events_contracted: number | null
@@ -286,6 +291,8 @@ export type Database = {
           approved_by?: string | null
           avatar_url?: string | null
           created_at?: string
+          credits_qr?: number
+          credits_standard?: number
           email: string
           event_limit?: number | null
           events_contracted?: number | null
@@ -302,6 +309,8 @@ export type Database = {
           approved_by?: string | null
           avatar_url?: string | null
           created_at?: string
+          credits_qr?: number
+          credits_standard?: number
           email?: string
           event_limit?: number | null
           events_contracted?: number | null
@@ -523,7 +532,13 @@ export type Database = {
       }
     }
     Functions: {
-      can_user_create_event: { Args: { _user_id: string }; Returns: boolean }
+      can_user_create_event:
+        | { Args: { _user_id: string }; Returns: boolean }
+        | { Args: { _credit_type: string; _user_id: string }; Returns: boolean }
+      consume_event_credit: {
+        Args: { _credit_type: string; _user_id: string }
+        Returns: boolean
+      }
       get_available_events: { Args: { _user_id: string }; Returns: number }
       get_user_event_count: { Args: { _user_id: string }; Returns: number }
       get_user_id_by_email: { Args: { _email: string }; Returns: string }
