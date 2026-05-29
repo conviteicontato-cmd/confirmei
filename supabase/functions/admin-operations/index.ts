@@ -890,6 +890,114 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "adjust_user_credits": {
+        const { userId, creditsStandard, creditsQr, reason } = params;
+
+        // Block managing credits for super admins
+        const { data: targetRoles } = await adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .eq("role", "super_admin")
+          .maybeSingle();
+
+        if (targetRoles) {
+          return new Response(JSON.stringify({ error: "Super admins have unlimited events" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Get current values
+        const { data: currentProfile } = await adminClient
+          .from("profiles")
+          .select("credits_standard, credits_qr, email")
+          .eq("user_id", userId)
+          .single();
+
+        if (currentProfile?.email === SUPER_ADMIN_EMAIL) {
+          return new Response(JSON.stringify({ error: "Cannot modify super admin" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const oldStandard = currentProfile?.credits_standard ?? 0;
+        const oldQr = currentProfile?.credits_qr ?? 0;
+        const newStandard = Number.isFinite(creditsStandard) ? Math.max(0, Math.trunc(creditsStandard)) : oldStandard;
+        const newQr = Number.isFinite(creditsQr) ? Math.max(0, Math.trunc(creditsQr)) : oldQr;
+
+        const { error: updateError } = await adminClient
+          .from("profiles")
+          .update({ credits_standard: newStandard, credits_qr: newQr })
+          .eq("user_id", userId);
+
+        if (updateError) throw updateError;
+
+        // Log audit event with previous and new values
+        await adminClient.from("audit_logs").insert({
+          user_id: actorUserId,
+          action: "adjust_user_credits",
+          entity_type: "profile",
+          entity_id: userId,
+          details: {
+            previous: { credits_standard: oldStandard, credits_qr: oldQr },
+            new: { credits_standard: newStandard, credits_qr: newQr },
+            reason,
+          },
+        });
+
+        result = {
+          success: true,
+          message: "User credits adjusted",
+          credits_standard: newStandard,
+          credits_qr: newQr,
+        };
+        break;
+      }
+
+      case "get_user_credit_details": {
+        const { userId } = params;
+
+        // Profile credit balances
+        const { data: profile, error: profileError } = await adminClient
+          .from("profiles")
+          .select("credits_standard, credits_qr")
+          .eq("user_id", userId)
+          .single();
+
+        if (profileError) throw profileError;
+
+        // Events created by the user, with credit_type
+        const { data: events, error: eventsError } = await adminClient
+          .from("events")
+          .select("id, name, event_date, created_at, credit_type")
+          .eq("user_id", userId)
+          .order("event_date", { ascending: false });
+
+        if (eventsError) throw eventsError;
+
+        const allEvents = events || [];
+        const standardCount = allEvents.filter((e) => e.credit_type === "standard").length;
+        const qrCount = allEvents.filter((e) => e.credit_type === "qr").length;
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        const upcomingEvents = allEvents.filter((e) => new Date(e.event_date) >= today);
+        const pastEvents = allEvents.filter((e) => new Date(e.event_date) < today);
+
+        result = {
+          credits_standard: profile?.credits_standard ?? 0,
+          credits_qr: profile?.credits_qr ?? 0,
+          events_standard_count: standardCount,
+          events_qr_count: qrCount,
+          upcoming_events: upcomingEvents,
+          past_events: pastEvents,
+        };
+        break;
+      }
+
       default:
         return new Response(JSON.stringify({ error: "Unknown action" }), {
           status: 400,
