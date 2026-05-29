@@ -265,8 +265,8 @@ const AdjustCreditsModal = ({ open, onOpenChange, user, onCreditsUpdated, initia
 
         {/* Side-by-side on desktop, tabs on mobile */}
         <div className="hidden sm:grid sm:grid-cols-2 gap-4">
-          <CreditSection type="standard" />
-          <CreditSection type="qr" />
+          {renderCreditSection("standard")}
+          {renderCreditSection("qr")}
         </div>
 
         <div className="sm:hidden">
@@ -282,10 +282,10 @@ const AdjustCreditsModal = ({ open, onOpenChange, user, onCreditsUpdated, initia
               </TabsTrigger>
             </TabsList>
             <TabsContent value="standard" className="mt-4">
-              <CreditSection type="standard" />
+              {renderCreditSection("standard")}
             </TabsContent>
             <TabsContent value="qr" className="mt-4">
-              <CreditSection type="qr" />
+              {renderCreditSection("qr")}
             </TabsContent>
           </Tabs>
         </div>
