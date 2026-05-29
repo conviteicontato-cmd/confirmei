@@ -183,19 +183,15 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
         });
       }
 
-      // Fetch credit adjustment history (audit logs)
+      // Fetch credit adjustment history (audit logs by entity)
       const { data: creditAuditData } = await supabase.functions.invoke("admin-operations", {
         body: {
           action: "get_audit_logs",
-          filters: { user_id: user.user_id, action: "adjust_user_credits" },
+          filters: { entity_id: user.user_id, action: "adjust_user_credits" },
           limit: 50,
         },
       });
-      setCreditAudit(
-        (creditAuditData?.logs || []).filter(
-          (l: { entity_id?: string }) => l.entity_id === user.user_id
-        )
-      );
+      setCreditAudit(creditAuditData?.logs || []);
     } catch (err) {
       console.error("Error fetching user data:", err);
     } finally {
