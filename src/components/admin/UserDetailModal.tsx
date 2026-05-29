@@ -59,6 +59,8 @@ interface UserProfile {
   events_contracted?: number;
   events_used?: number;
   available_events?: number;
+  credits_standard?: number;
+  credits_qr?: number;
   is_super_admin?: boolean;
 }
 
@@ -69,6 +71,7 @@ interface UserEvent {
   created_at: string;
   guest_count: number;
   checkin_count: number;
+  credit_type?: string | null;
 }
 
 interface LimitHistory {
@@ -87,6 +90,26 @@ interface UserActivity {
   entity_type: string;
   created_at: string;
   details: Record<string, unknown> | null;
+}
+
+interface CreditDetails {
+  credits_standard: number;
+  credits_qr: number;
+  events_used: number;
+  events_contracted: number;
+  events_standard_count: number;
+  events_qr_count: number;
+}
+
+interface CreditAuditEntry {
+  id: string;
+  created_at: string;
+  details: {
+    previous?: { credits_standard?: number; credits_qr?: number };
+    new?: { credits_standard?: number; credits_qr?: number };
+    reason?: string;
+    reset_events?: boolean;
+  } | null;
 }
 
 interface Props {
