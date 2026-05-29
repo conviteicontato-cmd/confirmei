@@ -537,6 +537,103 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
                   )}
                 </TabsContent>
 
+                {/* Credits Tab */}
+                {!isSuper && (
+                  <TabsContent value="credits" className="space-y-5 mt-4">
+                    {/* Standard usage progress */}
+                    {(() => {
+                      const stdUsed = creditDetails?.events_standard_count ?? 0;
+                      const qrUsed = creditDetails?.events_qr_count ?? 0;
+                      const stdTotal = stdUsed + creditsStandard;
+                      const qrTotal = qrUsed + creditsQr;
+                      const stdPct = stdTotal > 0 ? Math.round((stdUsed / stdTotal) * 100) : 0;
+                      const qrPct = qrTotal > 0 ? Math.round((qrUsed / qrTotal) * 100) : 0;
+                      return (
+                        <div className="space-y-4">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="flex items-center gap-1.5 text-amber-600 font-medium">
+                                <FileText className="h-4 w-4" /> Formulário Comum
+                              </span>
+                              <span className="text-muted-foreground">
+                                {stdUsed} usados / {stdTotal} total • {creditsStandard} restantes
+                              </span>
+                            </div>
+                            <Progress value={stdPct} className="h-2" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="flex items-center gap-1.5 text-primary font-medium">
+                                <QrCode className="h-4 w-4" /> Formulário com QR Code
+                              </span>
+                              <span className="text-muted-foreground">
+                                {qrUsed} usados / {qrTotal} total • {creditsQr} restantes
+                              </span>
+                            </div>
+                            <Progress value={qrPct} className="h-2" />
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Credit adjustment history */}
+                    <div>
+                      <h4 className="font-medium text-sm text-muted-foreground mb-2">
+                        Histórico de ajustes ({creditAudit.length})
+                      </h4>
+                      {creditAudit.length > 0 ? (
+                        <div className="space-y-2">
+                          {creditAudit.map((entry) => {
+                            const prev = entry.details?.previous || {};
+                            const next = entry.details?.new || {};
+                            const stdChanged = (prev.credits_standard ?? 0) !== (next.credits_standard ?? 0);
+                            const qrChanged = (prev.credits_qr ?? 0) !== (next.credits_qr ?? 0);
+                            return (
+                              <div key={entry.id} className="p-3 bg-muted/30 rounded-lg space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                                    {stdChanged && (
+                                      <span className="flex items-center gap-1 text-amber-600">
+                                        <FileText className="h-3.5 w-3.5" />
+                                        {prev.credits_standard ?? 0} → {next.credits_standard ?? 0}
+                                      </span>
+                                    )}
+                                    {qrChanged && (
+                                      <span className="flex items-center gap-1 text-primary">
+                                        <QrCode className="h-3.5 w-3.5" />
+                                        {prev.credits_qr ?? 0} → {next.credits_qr ?? 0}
+                                      </span>
+                                    )}
+                                    {!stdChanged && !qrChanged && (
+                                      <span className="text-muted-foreground">Ajuste de créditos</span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {format(new Date(entry.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                                  </div>
+                                </div>
+                                {entry.details?.reason && (
+                                  <div className="text-sm text-muted-foreground">
+                                    Motivo: {entry.details.reason}
+                                  </div>
+                                )}
+                                {entry.details?.reset_events && (
+                                  <div className="text-xs text-amber-600">Contadores de uso resetados</div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          Nenhum ajuste de crédito registrado
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                )}
+
+
                 {/* Limit History Tab */}
                 <TabsContent value="history" className="mt-4">
                   {limitHistory.length > 0 ? (
