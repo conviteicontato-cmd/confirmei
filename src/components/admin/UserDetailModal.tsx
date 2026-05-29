@@ -256,6 +256,26 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
   const totalCheckins = events.reduce((acc, e) => acc + (e.checkin_count || 0), 0);
   const averageAttendance = totalGuests > 0 ? Math.round((totalCheckins / totalGuests) * 100) : 0;
 
+  const isSuper = user?.is_super_admin || user?.roles?.includes("super_admin");
+  const creditsStandard = creditDetails?.credits_standard ?? user?.credits_standard ?? 0;
+  const creditsQr = creditDetails?.credits_qr ?? user?.credits_qr ?? 0;
+  const realizedEvents = past.length;
+  const futureEvents = upcoming.length;
+
+  const creditAlert = (() => {
+    if (isSuper) return null;
+    if (creditsStandard === 0 && creditsQr === 0) {
+      return { label: "Sem créditos", className: "bg-destructive/10 text-destructive border-destructive/30" };
+    }
+    if (creditsStandard === 0 && creditsQr > 0) {
+      return { label: "Sem créditos comuns", className: "bg-amber-500/10 text-amber-600 border-amber-500/30" };
+    }
+    if (creditsQr === 0 && creditsStandard > 0) {
+      return { label: "Sem créditos QR", className: "bg-amber-500/10 text-amber-600 border-amber-500/30" };
+    }
+    return null;
+  })();
+
   const formatLimit = (limit: number | null) => {
     if (limit === null) return "Padrão do sistema";
     if (limit === -1) return "Ilimitado";
