@@ -26,7 +26,7 @@ const SidebarContent = ({
 }: { 
   eventName: string;
   activeTab: string;
-  onTabChange: (tab: "convidados" | "checkin" | "configuracoes" | "mensagens") => void;
+  onTabChange: (tab: EventTab) => void;
   onNavigate: (path: string) => void;
 }) => {
   const navigate = useNavigate();
