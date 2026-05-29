@@ -420,6 +420,12 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
                     <Calendar className="h-4 w-4 mr-1" />
                     Eventos ({events.length})
                   </TabsTrigger>
+                  {!isSuper && (
+                    <TabsTrigger value="credits" className="flex-1">
+                      <CreditCard className="h-4 w-4 mr-1" />
+                      Créditos
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="history" className="flex-1">
                     <Clock className="h-4 w-4 mr-1" />
                     Histórico de Limites
