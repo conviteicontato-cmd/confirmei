@@ -20,12 +20,19 @@ import {
   Loader2,
   Trash2,
   Settings,
-  Activity
+  Activity,
+  FileText,
+  QrCode,
+  CreditCard,
+  AlertTriangle,
+  Plus
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
 import AdjustLimitModal from "./AdjustLimitModal";
+import AdjustCreditsModal from "./AdjustCreditsModal";
 import {
   AlertDialog,
   AlertDialogAction,
