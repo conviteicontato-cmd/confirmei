@@ -124,8 +124,12 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
   const [events, setEvents] = useState<UserEvent[]>([]);
   const [limitHistory, setLimitHistory] = useState<LimitHistory[]>([]);
   const [activities, setActivities] = useState<UserActivity[]>([]);
+  const [creditDetails, setCreditDetails] = useState<CreditDetails | null>(null);
+  const [creditAudit, setCreditAudit] = useState<CreditAuditEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [adjustLimitOpen, setAdjustLimitOpen] = useState(false);
+  const [adjustCreditsOpen, setAdjustCreditsOpen] = useState(false);
+  const [creditsInitialTab, setCreditsInitialTab] = useState<"standard" | "qr">("standard");
   const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
   const [deletingEvent, setDeletingEvent] = useState(false);
   const { toast } = useToast();
@@ -135,6 +139,11 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
       fetchUserData();
     }
   }, [open, user]);
+
+  const openCreditsModal = (tab: "standard" | "qr") => {
+    setCreditsInitialTab(tab);
+    setAdjustCreditsOpen(true);
+  };
 
   const fetchUserData = async () => {
     if (!user) return;
@@ -158,6 +167,35 @@ const UserDetailModal = ({ user, open, onOpenChange, onUserUpdated, systemLimit 
         body: { action: "get_audit_logs", filters: { user_id: user.user_id }, limit: 50 },
       });
       setActivities(activitiesData?.logs || []);
+
+      // Fetch differentiated credit details
+      const { data: creditData } = await supabase.functions.invoke("admin-operations", {
+        body: { action: "get_user_credit_details", userId: user.user_id },
+      });
+      if (creditData) {
+        setCreditDetails({
+          credits_standard: creditData.credits_standard ?? 0,
+          credits_qr: creditData.credits_qr ?? 0,
+          events_used: creditData.events_used ?? 0,
+          events_contracted: creditData.events_contracted ?? 0,
+          events_standard_count: creditData.events_standard_count ?? 0,
+          events_qr_count: creditData.events_qr_count ?? 0,
+        });
+      }
+
+      // Fetch credit adjustment history (audit logs)
+      const { data: creditAuditData } = await supabase.functions.invoke("admin-operations", {
+        body: {
+          action: "get_audit_logs",
+          filters: { user_id: user.user_id, action: "adjust_user_credits" },
+          limit: 50,
+        },
+      });
+      setCreditAudit(
+        (creditAuditData?.logs || []).filter(
+          (l: { entity_id?: string }) => l.entity_id === user.user_id
+        )
+      );
     } catch (err) {
       console.error("Error fetching user data:", err);
     } finally {
