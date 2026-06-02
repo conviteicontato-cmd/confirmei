@@ -26,6 +26,8 @@ interface AddGuestModalProps {
   onOpenChange: (open: boolean) => void;
   eventId: string;
   onSuccess: () => void;
+  /** When provided, the guest is added via the host Edge Function (unauthenticated host link flow) */
+  hostToken?: string;
 }
 
 const normalizeWhatsApp = (value: string): string => {
