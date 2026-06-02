@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.verify-host-password]
 verify_jwt = false
+
+[functions.host-add-guest]
+verify_jwt = false
