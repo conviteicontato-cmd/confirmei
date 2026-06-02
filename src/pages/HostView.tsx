@@ -328,6 +328,7 @@ const HostView = () => {
               onOpenChange={setAddGuestOpen}
               eventId={eventId}
               onSuccess={fetchGuests}
+              hostToken={session?.token}
             />
             {editGuest && (
               <EditGuestModal
