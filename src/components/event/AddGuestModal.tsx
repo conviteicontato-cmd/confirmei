@@ -119,7 +119,7 @@ const AddGuestModal = ({ open, onOpenChange, eventId, onSuccess, hostToken }: Ad
 
         if (error) throw error;
         if (data?.error) {
-          if (typeof data.error === "string" && data.error.includes("já existe")) {
+          if (typeof data.error === "string" && data.error.toLowerCase().includes("já existe")) {
             setNameError("Já existe um convidado com este nome neste evento");
             setSaving(false);
             return;
