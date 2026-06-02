@@ -38,7 +38,7 @@ const normalizeWhatsApp = (value: string): string => {
   return digits;
 };
 
-const AddGuestModal = ({ open, onOpenChange, eventId, onSuccess }: AddGuestModalProps) => {
+const AddGuestModal = ({ open, onOpenChange, eventId, onSuccess, hostToken }: AddGuestModalProps) => {
   const [name, setName] = useState("");
   const [maxAdults, setMaxAdults] = useState("1");
   const [maxChildren, setMaxChildren] = useState("0");
