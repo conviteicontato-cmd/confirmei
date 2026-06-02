@@ -88,33 +88,66 @@ const AddGuestModal = ({ open, onOpenChange, eventId, onSuccess, hostToken }: Ad
     setSaving(true);
     setNameError("");
 
+    const maxA = Math.max(0, parseInt(maxAdults) || 0);
+    const maxC = Math.max(0, parseInt(maxChildren) || 0);
+    const confA = status === "confirmed" ? Math.min(Math.max(0, parseInt(confirmedAdults) || 0), maxA) : 0;
+    const confC = status === "confirmed" ? Math.min(Math.max(0, parseInt(confirmedChildren) || 0), maxC) : 0;
+    const normalizedWa = normalizeWhatsApp(whatsapp);
+
+    const requestUrl = hostToken
+      ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/host-add-guest`
+      : `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/guests`;
+
     try {
-      const { data: existingGuest, error: checkError } = await supabase
-        .from("guests").select("id").eq("event_id", eventId).ilike("name", trimmedName).maybeSingle();
-      if (checkError) throw checkError;
-      if (existingGuest) { setNameError("Já existe um convidado com este nome neste evento"); setSaving(false); return; }
+      if (hostToken) {
+        // Host link flow: unauthenticated host -> route through Edge Function (service role)
+        const { data, error } = await supabase.functions.invoke("host-add-guest", {
+          body: {
+            token: hostToken,
+            event_id: eventId,
+            name: trimmedName,
+            max_adults: maxA,
+            max_children: maxC,
+            status,
+            confirmed_adults: confA,
+            confirmed_children: confC,
+            observations: observations.trim() || null,
+            group_name: groupName.trim() || null,
+            whatsapp: normalizedWa || null,
+          },
+        });
 
-      const maxA = Math.max(0, parseInt(maxAdults) || 0);
-      const maxC = Math.max(0, parseInt(maxChildren) || 0);
-      const confA = status === "confirmed" ? Math.min(Math.max(0, parseInt(confirmedAdults) || 0), maxA) : 0;
-      const confC = status === "confirmed" ? Math.min(Math.max(0, parseInt(confirmedChildren) || 0), maxC) : 0;
+        if (error) throw error;
+        if (data?.error) {
+          if (typeof data.error === "string" && data.error.includes("já existe")) {
+            setNameError("Já existe um convidado com este nome neste evento");
+            setSaving(false);
+            return;
+          }
+          throw new Error(data.error);
+        }
+      } else {
+        // Organizer flow: authenticated direct insert (unchanged)
+        const { data: existingGuest, error: checkError } = await supabase
+          .from("guests").select("id").eq("event_id", eventId).ilike("name", trimmedName).maybeSingle();
+        if (checkError) throw checkError;
+        if (existingGuest) { setNameError("Já existe um convidado com este nome neste evento"); setSaving(false); return; }
 
-      const normalizedWa = normalizeWhatsApp(whatsapp);
+        const { error } = await supabase.from("guests").insert({
+          event_id: eventId,
+          name: trimmedName,
+          max_adults: maxA,
+          max_children: maxC,
+          status,
+          confirmed_adults: confA,
+          confirmed_children: confC,
+          observations: observations.trim() || null,
+          group_name: groupName.trim() || null,
+          whatsapp: normalizedWa || null,
+        });
 
-      const { error } = await supabase.from("guests").insert({
-        event_id: eventId,
-        name: trimmedName,
-        max_adults: maxA,
-        max_children: maxC,
-        status,
-        confirmed_adults: confA,
-        confirmed_children: confC,
-        observations: observations.trim() || null,
-        group_name: groupName.trim() || null,
-        whatsapp: normalizedWa || null,
-      });
-
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       toast({
         title: "Convidado adicionado",
@@ -125,7 +158,23 @@ const AddGuestModal = ({ open, onOpenChange, eventId, onSuccess, hostToken }: Ad
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
-      toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
+      // Detailed logging to help diagnose network/CORS/"Failed to fetch" issues
+      console.error("[AddGuestModal] Falha ao adicionar convidado", {
+        requestUrl,
+        flow: hostToken ? "host-edge-function" : "direct-insert",
+        origin: window.location.origin,
+        errorName: error?.name,
+        errorMessage: error?.message,
+        error,
+      });
+      const isNetwork = error?.message?.includes("Failed to fetch") || error?.name === "TypeError";
+      toast({
+        title: "Erro ao adicionar",
+        description: isNetwork
+          ? `Falha de conexão ao chamar ${requestUrl}. Verifique sua internet/extensões e tente novamente.`
+          : (error?.message || "Erro inesperado"),
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
