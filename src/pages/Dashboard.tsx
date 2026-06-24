@@ -109,9 +109,9 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-background">
+    <div className="min-h-screen flex bg-[#f4eee5]">
       <Sidebar user={user} activeSection="painel" />
-      <main className="flex-1 overflow-auto pt-16 lg:pt-0">
+      <main className="flex-1 min-w-0 overflow-auto">
         <DashboardContent userId={user?.id || ""} />
       </main>
     </div>
