@@ -16,6 +16,8 @@ export default {
       fontFamily: {
         sans: ['Poppins', 'sans-serif'],
         display: ['Poppins', 'sans-serif'],
+        serif: ['"Cormorant Garamond"', 'serif'],
+        grotesk: ['"Hanken Grotesk"', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -99,12 +101,22 @@ export default {
           from: { opacity: "0", transform: "translateY(10px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "pulse-dot": {
+          "0%,100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.45", transform: "scale(0.82)" },
+        },
+        "float-in": {
+          from: { opacity: "0", transform: "translateY(10px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.3s ease-out",
         "slide-up": "slide-up 0.4s ease-out",
+        "pulse-dot": "pulse-dot 1.8s ease-in-out infinite",
+        "float-in": "float-in 0.4s ease-out",
       },
     },
   },
