@@ -495,80 +495,87 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
   };
 
   return (
-    <div className="p-4 lg:p-8">
-      {/* Breadcrumb */}
-      <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground mb-4">
-        <button 
-          onClick={() => navigate("/dashboard")}
-          className="hover:text-foreground transition-colors"
-        >
-          Eventos
-        </button>
-        <ChevronRight className="h-4 w-4" />
-        <span className="text-foreground">{event.name}</span>
-      </div>
-
+    <div className="font-grotesk">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 lg:mb-8">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-display font-bold text-foreground">
+      <header className="flex items-center gap-5 px-5 md:px-10 py-5 border-b border-[#e6dccf] bg-[#f4eee5]/70 backdrop-blur-sm sticky top-0 z-10">
+        <div className="flex-1 min-w-0">
+          <div className="hidden sm:flex items-center gap-[7px] text-[12.5px] text-[#b3a194] mb-1">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="hover:text-[#7a1b2a] transition-colors"
+            >
+              Eventos
+            </button>
+            <ChevronRight className="h-[13px] w-[13px]" />
+            <span className="text-[#7a1b2a] font-semibold truncate">{event.name}</span>
+          </div>
+          <h1 className="font-serif font-semibold text-[22px] md:text-[28px] leading-none text-[#3a0a10] truncate">
             {event.name}
           </h1>
-          <p className="text-muted-foreground">Gerenciar os convidados deste evento</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            className="rounded-full"
+        <div className="flex items-center gap-[10px] flex-none">
+          <button
             onClick={() => setShareHostOpen(true)}
+            className="flex items-center gap-2 bg-white text-[#4c0c14] border border-[#e6dccf] rounded-[11px] px-3 md:px-4 py-[10px] text-[13.5px] font-semibold hover:bg-[#fbf7f1] transition-colors"
           >
-            <Users className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Compartilhar com Anfitrião</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="rounded-full"
+            <Users className="h-4 w-4" />
+            <span className="hidden md:inline">Compartilhar com anfitrião</span>
+          </button>
+          <button
             onClick={() => window.open(`/confirmar/${event.id}`, "_blank")}
+            className="flex items-center gap-2 bg-[#4c0c14] text-white rounded-[11px] px-3 md:px-4 py-[10px] text-[13.5px] font-semibold hover:bg-[#5e1019] transition-colors shadow-[0_6px_16px_-6px_rgba(76,12,20,.6)]"
           >
-            <ExternalLink className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Ver Página</span>
-          </Button>
+            <ExternalLink className="h-4 w-4" />
+            <span className="hidden md:inline">Ver página</span>
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Stats Cards */}
-      <EventStatsCards stats={stats} />
+      <div className="px-5 md:px-10 py-7 max-w-[1180px] w-full mx-auto">
+        {/* Stats Cards */}
+        <EventStatsCards stats={stats} />
 
-      {/* Actions */}
-      <div className="flex flex-wrap gap-2 lg:gap-3 mb-6 lg:mb-8">
-        <Button className="btn-gold rounded-full flex-1 sm:flex-none" onClick={() => setAddGuestOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Convidado
-        </Button>
-        <input
-          type="file"
-          accept=".xlsx,.xls,.csv"
-          ref={fileInputRef}
-          onChange={handleImportFile}
-          className="hidden"
-        />
-        <Button variant="outline" className="rounded-full hidden sm:flex" onClick={handleDownloadTemplate}>
-          <Download className="h-4 w-4 mr-2" />
-          Modelo CSV
-        </Button>
-        <Button variant="outline" className="rounded-full hidden sm:flex" onClick={() => fileInputRef.current?.click()}>
-          <FileUp className="h-4 w-4 mr-2" />
-          Importar CSV
-        </Button>
-        <Button variant="outline" className="rounded-full hidden sm:flex" onClick={handleExportAll}>
-          <FileDown className="h-4 w-4 mr-2" />
-          Exportar CSV
-        </Button>
-        <Button className="btn-gold rounded-full" onClick={handleExportConfirmed}>
-          <FileDown className="h-4 w-4 mr-2" />
-          <span className="hidden sm:inline">Exportar </span>Confirmados
-        </Button>
-      </div>
+        {/* Actions */}
+        <div className="flex items-center gap-[10px] flex-wrap mb-[18px]">
+          <button
+            className="flex items-center gap-[7px] bg-[#4c0c14] text-white rounded-[10px] px-4 py-[10px] text-[13.5px] font-semibold hover:bg-[#5e1019] transition-colors"
+            onClick={() => setAddGuestOpen(true)}
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.2} />
+            Convidado
+          </button>
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            ref={fileInputRef}
+            onChange={handleImportFile}
+            className="hidden"
+          />
+          <button
+            className="flex items-center gap-[7px] bg-white text-[#5e3b32] border border-[#e6dccf] rounded-[10px] px-[14px] py-[10px] text-[13.5px] font-semibold hover:bg-[#fbf7f1] transition-colors"
+            onClick={handleDownloadTemplate}
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Modelo CSV</span>
+          </button>
+          <button
+            className="flex items-center gap-[7px] bg-white text-[#5e3b32] border border-[#e6dccf] rounded-[10px] px-[14px] py-[10px] text-[13.5px] font-semibold hover:bg-[#fbf7f1] transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <FileUp className="h-4 w-4" />
+            <span className="hidden sm:inline">Importar CSV</span>
+          </button>
+          <div className="flex-1" />
+          <button
+            className="flex items-center gap-[7px] bg-white text-[#5e3b32] border border-[#e6dccf] rounded-[10px] px-[14px] py-[10px] text-[13.5px] font-semibold hover:bg-[#fbf7f1] transition-colors"
+            onClick={handleExportConfirmed}
+          >
+            <FileDown className="h-4 w-4" />
+            <span className="hidden sm:inline">Exportar confirmados</span>
+            <span className="sm:hidden">Confirmados</span>
+          </button>
+        </div>
+
 
       {/* Guest Table or Empty State */}
       {stats.total === 0 && !loading ? (
