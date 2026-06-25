@@ -43,13 +43,14 @@ const EventDetails = () => {
       if (eventId) {
         supabase
           .from("events")
-          .select("name")
+          .select("name, event_date")
           .eq("id", eventId)
           .eq("user_id", session.user.id)
           .maybeSingle()
           .then(({ data }) => {
             if (data) {
               setEventName(data.name);
+              setEventDate(data.event_date);
             }
             setLoading(false);
           });
