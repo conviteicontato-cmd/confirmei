@@ -579,18 +579,21 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
 
       {/* Guest Table or Empty State */}
       {stats.total === 0 && !loading ? (
-        <div className="card-elegant p-12 text-center">
-          <Users className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-2">
+        <div className="bg-white border border-[#ece2d5] rounded-2xl p-12 text-center">
+          <Users className="h-12 w-12 mx-auto text-[#b3a194] mb-4" />
+          <h3 className="font-serif text-xl font-semibold text-[#3a0a10] mb-2">
             Nenhum convidado ainda
           </h3>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-[#9a8478] mb-4">
             Adicione convidados manualmente ou importe um arquivo CSV
           </p>
-          <Button className="btn-gold rounded-full" onClick={() => setAddGuestOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
+          <button
+            className="inline-flex items-center gap-2 bg-[#4c0c14] text-white rounded-[10px] px-4 py-[10px] text-[13.5px] font-semibold hover:bg-[#5e1019] transition-colors"
+            onClick={() => setAddGuestOpen(true)}
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.2} />
             Adicionar Convidado
-          </Button>
+          </button>
         </div>
       ) : (
         <GuestTable 
@@ -603,6 +606,8 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
           onEdit={(guest) => setEditGuest(guest)}
         />
       )}
+      </div>
+
 
       {/* Add Guest Modal */}
       <AddGuestModal
