@@ -16,6 +16,7 @@ const EventDetails = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const [session, setSession] = useState<Session | null>(null);
   const [eventName, setEventName] = useState("");
+  const [eventDate, setEventDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"convidados" | "checkin" | "dashboard" | "configuracoes" | "mensagens">("convidados");
   const navigate = useNavigate();
