@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.host-add-guest]
 verify_jwt = false
+
+[functions.decline-guest]
+verify_jwt = false
