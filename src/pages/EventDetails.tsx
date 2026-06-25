@@ -128,15 +128,16 @@ const EventDetails = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-background">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#f4eee5]">
       <EventSidebar 
         user={session.user} 
         eventName={eventName}
+        eventDate={eventDate}
         eventId={eventId}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
-      <main className="flex-1 overflow-auto pt-16 lg:pt-0">
+      <main className="flex-1 min-w-0 overflow-auto pb-24 md:pb-0">
         {renderContent()}
       </main>
     </div>
