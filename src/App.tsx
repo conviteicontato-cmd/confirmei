@@ -15,6 +15,7 @@ import ResetPassword from "./pages/ResetPassword";
 import PublicCheckin from "./pages/PublicCheckin";
 import HostView from "./pages/HostView";
 import TicketView from "./pages/TicketView";
+import CriarEvento from "./pages/CriarEvento";
 
 const queryClient = new QueryClient();
 
@@ -27,10 +28,46 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<RouteErrorBoundary><Dashboard /></RouteErrorBoundary>} />
-          <Route path="/event/:eventId" element={<RouteErrorBoundary><EventDetails /></RouteErrorBoundary>} />
-          <Route path="/confirmar/:eventId" element={<RouteErrorBoundary><PublicEvent /></RouteErrorBoundary>} />
-          <Route path="/admin" element={<RouteErrorBoundary><Admin /></RouteErrorBoundary>} />
+          <Route
+            path="/dashboard"
+            element={
+              <RouteErrorBoundary>
+                <Dashboard />
+              </RouteErrorBoundary>
+            }
+          />
+          <Route
+            path="/criar-evento"
+            element={
+              <RouteErrorBoundary>
+                <CriarEvento />
+              </RouteErrorBoundary>
+            }
+          />
+          <Route
+            path="/event/:eventId"
+            element={
+              <RouteErrorBoundary>
+                <EventDetails />
+              </RouteErrorBoundary>
+            }
+          />
+          <Route
+            path="/confirmar/:eventId"
+            element={
+              <RouteErrorBoundary>
+                <PublicEvent />
+              </RouteErrorBoundary>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <RouteErrorBoundary>
+                <Admin />
+              </RouteErrorBoundary>
+            }
+          />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/checkin/:code" element={<PublicCheckin />} />
           <Route path="/evento/:eventId/anfitriao" element={<HostView />} />
