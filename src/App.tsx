@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import PublicCheckin from "./pages/PublicCheckin";
 import HostView from "./pages/HostView";
+import TicketView from "./pages/TicketView";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/checkin/:code" element={<PublicCheckin />} />
           <Route path="/evento/:eventId/anfitriao" element={<HostView />} />
+          <Route path="/ingresso/:code" element={<TicketView />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
