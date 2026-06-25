@@ -16,6 +16,7 @@ const EventDetails = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const [session, setSession] = useState<Session | null>(null);
   const [eventName, setEventName] = useState("");
+  const [eventDate, setEventDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"convidados" | "checkin" | "dashboard" | "configuracoes" | "mensagens">("convidados");
   const navigate = useNavigate();
@@ -42,13 +43,14 @@ const EventDetails = () => {
       if (eventId) {
         supabase
           .from("events")
-          .select("name")
+          .select("name, event_date")
           .eq("id", eventId)
           .eq("user_id", session.user.id)
           .maybeSingle()
           .then(({ data }) => {
             if (data) {
               setEventName(data.name);
+              setEventDate(data.event_date);
             }
             setLoading(false);
           });
@@ -126,15 +128,16 @@ const EventDetails = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-background">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#f4eee5]">
       <EventSidebar 
         user={session.user} 
         eventName={eventName}
+        eventDate={eventDate}
         eventId={eventId}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
-      <main className="flex-1 overflow-auto pt-16 lg:pt-0">
+      <main className="flex-1 min-w-0 overflow-auto pb-24 md:pb-0">
         {renderContent()}
       </main>
     </div>

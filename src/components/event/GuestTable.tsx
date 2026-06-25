@@ -1,28 +1,18 @@
-import { useState, useMemo, useEffect, useCallback, Fragment } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Tooltip, TooltipContent, TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-  DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuSeparator,
+  DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { Search, Pencil, Trash2, RotateCcw, Send, Clock, QrCode, CheckCircle, MessageSquare, X, MoreVertical, Users, Baby, FolderOpen, Phone, Copy, ExternalLink, Mail, CheckCheck, ChevronDown, ChevronRight } from "lucide-react";
-import { Json } from "@/integrations/supabase/types";
+  Search, Pencil, Trash2, RotateCcw, QrCode, FolderOpen, Clock, ChevronLeft, ChevronRight, ChevronDown,
+  MessageSquare, ExternalLink, Copy, Phone,
+} from "lucide-react";
 import type { Guest } from "./EventManagement";
 
 interface WhatsAppTemplate {
@@ -30,14 +20,6 @@ interface WhatsAppTemplate {
   template_type: string;
   title: string;
   message_body: string;
-}
-
-interface MessageLog {
-  id: string;
-  guest_id: string;
-  template_type: string;
-  action_type: string;
-  sent_at: string;
 }
 
 interface GuestTableProps {
@@ -50,45 +32,48 @@ interface GuestTableProps {
   onEdit?: (guest: Guest) => void;
 }
 
-interface GroupStats {
-  name: string;
-  total: number;
-  confirmed: number;
-  pending: number;
-  expectedPeople: number;
-  checkedIn: number;
-}
+const PAGE_SIZE = 8;
 
-const TEMPLATE_LABELS: Record<string, string> = {
-  confirmation: "Confirmação",
-  reminder: "Lembrete",
-  extra: "Extra",
+const AVATAR_PALETTE = [
+  { bg: "#f4e7e0", color: "#7a1b2a" },
+  { bg: "#e6f1ea", color: "#2f8f63" },
+  { bg: "#f6ecda", color: "#b07d22" },
+  { bg: "#fbe7ee", color: "#d44e7d" },
+  { bg: "#e7ecf6", color: "#3a5fb0" },
+];
+
+const getInitials = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+const avatarFor = (name: string) => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+};
+
+const statusMeta = (guest: Guest) => {
+  if (guest.checkin_done) return { label: "Check-in", color: "#d44e7d", bg: "#fbe7ee" };
+  if (guest.status === "confirmed") return { label: "Confirmado", color: "#2f8f63", bg: "#e6f1ea" };
+  if (guest.status === "declined" || guest.status === "canceled") return { label: "Recusado", color: "#c0392b", bg: "#f7e7e7" };
+  return { label: "Pendente", color: "#b07d22", bg: "#f6ecda" };
 };
 
 const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefresh, onEdit }: GuestTableProps) => {
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("__all__");
   const [statusFilter, setStatusFilter] = useState("__all__");
-  const [messageFilter, setMessageFilter] = useState("__all__");
+  const [page, setPage] = useState(0);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [resetId, setResetId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const [sendingWebhook, setSendingWebhook] = useState<string | null>(null);
   const [waTemplates, setWaTemplates] = useState<WhatsAppTemplate[]>([]);
-  const [messageLogs, setMessageLogs] = useState<MessageLog[]>([]);
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
-  const toggleRow = (id: string) => {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
-  // Fetch WhatsApp templates
   useEffect(() => {
     supabase
       .from("whatsapp_templates")
@@ -99,41 +84,12 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
       });
   }, [eventId]);
 
-  // Fetch message logs
-  const fetchLogs = useCallback(() => {
-    supabase
-      .from("whatsapp_message_logs")
-      .select("id, guest_id, template_type, action_type, sent_at")
-      .eq("event_id", eventId)
-      .order("sent_at", { ascending: false })
-      .then(({ data }) => {
-        if (data) setMessageLogs(data);
-      });
-  }, [eventId]);
-
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
-
-  const getGuestLogs = useCallback((guestId: string) => {
-    return messageLogs.filter(l => l.guest_id === guestId);
-  }, [messageLogs]);
-
-  const getGuestLogsByType = useCallback((guestId: string) => {
-    const logs = getGuestLogs(guestId);
-    const map: Record<string, MessageLog> = {};
-    for (const log of logs) {
-      if (!map[log.template_type]) map[log.template_type] = log;
-    }
-    return map;
-  }, [getGuestLogs]);
-
   const buildMessage = (guest: Guest, template: WhatsAppTemplate): string => {
     let msg = template.message_body;
     msg = msg.replace(/\{\{nome_convidado\}\}/g, guest.name);
     msg = msg.replace(/\{\{nome_evento\}\}/g, eventName || "");
     msg = msg.replace(/\{\{data_evento\}\}/g, eventDate ? new Date(eventDate + "T12:00:00").toLocaleDateString("pt-BR") : "");
-    msg = msg.replace(/\{\{link_confirmacao\}\}/g, `${window.location.origin}/event/${eventId}`);
+    msg = msg.replace(/\{\{link_confirmacao\}\}/g, `${window.location.origin}/confirmar/${eventId}`);
     return msg;
   };
 
@@ -148,68 +104,42 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
       action_type: actionType,
       sent_by: session?.user?.id || null,
     });
-    fetchLogs();
   };
 
   const handleOpenWhatsApp = async (guest: Guest, template: WhatsAppTemplate) => {
     if (!guest.whatsapp) {
-      toast({ title: "Sem WhatsApp", description: `${guest.name} não possui número de WhatsApp cadastrado.`, variant: "destructive" });
-      return;
-    }
-    if (!template.message_body.trim()) {
-      toast({ title: "Template vazio", description: `O template "${template.title}" está sem conteúdo. Edite-o na aba Mensagens.`, variant: "destructive" });
-      return;
-    }
-    const phone = guest.whatsapp.replace(/[^0-9]/g, "");
-    const msg = buildMessage(guest, template);
-    const link = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-    window.open(link, "_blank");
-    await logMessageAction(guest, template, "open_whatsapp");
-    toast({ title: "WhatsApp aberto", description: `Mensagem de ${TEMPLATE_LABELS[template.template_type] || template.title} para ${guest.name}.` });
-  };
-
-  const handleCopyMessage = async (guest: Guest, template: WhatsAppTemplate) => {
-    if (!guest.whatsapp) {
-      toast({ title: "Sem WhatsApp", description: `${guest.name} não possui número de WhatsApp cadastrado.`, variant: "destructive" });
+      toast({ title: "Sem WhatsApp", description: `${guest.name} não possui número cadastrado.`, variant: "destructive" });
       return;
     }
     if (!template.message_body.trim()) {
       toast({ title: "Template vazio", description: `O template "${template.title}" está sem conteúdo.`, variant: "destructive" });
       return;
     }
+    const phone = guest.whatsapp.replace(/[^0-9]/g, "");
     const msg = buildMessage(guest, template);
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+    await logMessageAction(guest, template, "open_whatsapp");
+  };
+
+  const handleCopyMessage = async (guest: Guest, template: WhatsAppTemplate) => {
+    if (!template.message_body.trim()) {
+      toast({ title: "Template vazio", description: `O template "${template.title}" está sem conteúdo.`, variant: "destructive" });
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(msg);
+      await navigator.clipboard.writeText(buildMessage(guest, template));
       await logMessageAction(guest, template, "copy_message");
-      toast({ title: "Mensagem copiada", description: `Texto de ${TEMPLATE_LABELS[template.template_type] || template.title} copiado para ${guest.name}.` });
+      toast({ title: "Mensagem copiada", description: `Texto copiado para ${guest.name}.` });
     } catch {
       toast({ title: "Erro ao copiar", description: "Não foi possível copiar a mensagem.", variant: "destructive" });
     }
   };
 
-  // Compute unique groups
   const groups = useMemo(() => {
     const set = new Set<string>();
     guests.forEach(g => { if (g.group_name) set.add(g.group_name); });
     return Array.from(set).sort();
   }, [guests]);
-
-  // Compute group stats
-  const groupStats = useMemo((): GroupStats[] => {
-    if (groups.length === 0) return [];
-    const map = new Map<string, GroupStats>();
-    guests.forEach(g => {
-      const gName = g.group_name || "(Sem grupo)";
-      if (!map.has(gName)) map.set(gName, { name: gName, total: 0, confirmed: 0, pending: 0, expectedPeople: 0, checkedIn: 0 });
-      const s = map.get(gName)!;
-      s.total++;
-      if (g.status === "confirmed") s.confirmed++;
-      if (g.status === "pending") s.pending++;
-      if (g.checkin_done) s.checkedIn++;
-      s.expectedPeople += (g.confirmed_adults || 0) + (g.confirmed_children || 0);
-    });
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [guests, groups]);
 
   const filteredGuests = useMemo(() => {
     return guests.filter((guest) => {
@@ -217,35 +147,22 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
       const matchesGroup = groupFilter === "__all__"
         || (groupFilter === "__none__" && !guest.group_name)
         || guest.group_name === groupFilter;
-
       let matchesStatus = true;
       if (statusFilter !== "__all__") {
-        if (statusFilter === "checkedin") {
-          matchesStatus = !!guest.checkin_done;
-        } else if (statusFilter === "confirmed") {
-          matchesStatus = guest.status === "confirmed" && !guest.checkin_done;
-        } else if (statusFilter === "pending") {
-          matchesStatus = guest.status === "pending" || guest.status === null;
-        } else if (statusFilter === "declined") {
-          matchesStatus = guest.status === "declined" || guest.status === "canceled";
-        }
+        if (statusFilter === "checkedin") matchesStatus = !!guest.checkin_done;
+        else if (statusFilter === "confirmed") matchesStatus = guest.status === "confirmed" && !guest.checkin_done;
+        else if (statusFilter === "pending") matchesStatus = guest.status === "pending" || guest.status === null;
+        else if (statusFilter === "declined") matchesStatus = guest.status === "declined" || guest.status === "canceled";
       }
-
-      let matchesMessage = true;
-      if (messageFilter !== "__all__") {
-        const guestLogTypes = new Set(messageLogs.filter(l => l.guest_id === guest.id).map(l => l.template_type));
-        if (messageFilter === "__none__") {
-          matchesMessage = guestLogTypes.size === 0;
-        } else if (messageFilter.startsWith("no_")) {
-          matchesMessage = !guestLogTypes.has(messageFilter.replace("no_", ""));
-        } else {
-          matchesMessage = guestLogTypes.has(messageFilter);
-        }
-      }
-
-      return matchesSearch && matchesGroup && matchesStatus && matchesMessage;
+      return matchesSearch && matchesGroup && matchesStatus;
     });
-  }, [guests, search, groupFilter, statusFilter, messageFilter, messageLogs]);
+  }, [guests, search, groupFilter, statusFilter]);
+
+  useEffect(() => { setPage(0); }, [search, groupFilter, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredGuests.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const pageGuests = filteredGuests.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -284,355 +201,225 @@ const GuestTable = ({ guests, eventId, eventName, eventDate, webhookUrl, onRefre
     }
   };
 
-  const handleResendWebhook = async (guest: Guest) => {
-    if (!webhookUrl) {
-      toast({ title: "Webhook não configurado", description: "Configure a URL do webhook nas configurações do evento.", variant: "destructive" });
-      return;
-    }
-    setSendingWebhook(guest.id);
-    try {
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "resend_notification",
-          guest: { id: guest.id, name: guest.name, status: guest.status, confirmed_adults: guest.confirmed_adults, confirmed_children: guest.confirmed_children, qr_code: guest.qr_code },
-          event_id: eventId, timestamp: new Date().toISOString(),
-        }),
-      });
-      if (!response.ok) throw new Error("Falha ao enviar webhook");
-      toast({ title: "Webhook enviado", description: `Notificação reenviada para ${guest.name}.` });
-    } catch (error: any) {
-      toast({ title: "Erro ao enviar webhook", description: error.message, variant: "destructive" });
-    } finally {
-      setSendingWebhook(null);
-    }
+  const groupLabel = groupFilter === "__all__" ? "Todos os grupos" : groupFilter === "__none__" ? "(Sem grupo)" : groupFilter;
+  const statusLabels: Record<string, string> = {
+    __all__: "Todos os status", pending: "Pendentes", confirmed: "Confirmados", declined: "Recusados", checkedin: "Check-in",
   };
 
-  const getStatusBadge = (guest: Guest) => {
-    if (guest.checkin_done) return (<Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0"><CheckCircle className="h-3 w-3 mr-1" />Check-in</Badge>);
-    if (guest.status === "confirmed") return (<Badge className="bg-success/20 text-success hover:bg-success/30 border-0"><QrCode className="h-3 w-3 mr-1" />Confirmado</Badge>);
-    if (guest.status === "declined") return (<Badge variant="destructive"><X className="h-3 w-3 mr-1" />Recusado</Badge>);
-    return (<Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pendente</Badge>);
-  };
-
-  const formatCheckinTime = (checkinAt: string | null) => {
-    if (!checkinAt) return "-";
-    const date = new Date(checkinAt);
-    return date.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-  };
-
-  const formatLogDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  };
-
-  const MessageIndicators = ({ guestId }: { guestId: string }) => {
-    const logsByType = getGuestLogsByType(guestId);
-    const types = ["confirmation", "reminder", "extra"] as const;
-    const icons = { confirmation: CheckCheck, reminder: Clock, extra: Mail };
-    const colors = { confirmation: "text-green-600", reminder: "text-amber-500", extra: "text-blue-500" };
-
-    return (
-      <div className="flex items-center gap-1">
-        {types.map(type => {
-          const log = logsByType[type];
-          if (!log) return null;
-          const Icon = icons[type];
-          const actionLabel = log.action_type === "open_whatsapp" ? "enviado via WhatsApp" : "copiada";
-          return (
-            <Tooltip key={type}>
-              <TooltipTrigger>
-                <Icon className={`h-3.5 w-3.5 ${colors[type]}`} />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">{TEMPLATE_LABELS[type]} {actionLabel}</p>
-                <p className="text-xs text-muted-foreground">{formatLogDate(log.sent_at)}</p>
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const WhatsAppMenu = ({ guest }: { guest: Guest }) => {
-    if (waTemplates.length === 0) return null;
-
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700" title="Enviar WhatsApp" aria-label="Enviar WhatsApp">
-            <Phone className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          {!guest.whatsapp ? (
-            <DropdownMenuItem disabled className="text-muted-foreground">
-              <Phone className="h-4 w-4 mr-2" />Sem WhatsApp cadastrado
-            </DropdownMenuItem>
-          ) : (
-            waTemplates.map((t) => (
-              <DropdownMenuSub key={t.id}>
-                <DropdownMenuSubTrigger>
-                  <MessageSquare className="h-4 w-4 mr-2 text-green-600" />
-                  {t.title}
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem onClick={() => handleOpenWhatsApp(guest, t)}>
-                    <ExternalLink className="h-4 w-4 mr-2" />Abrir no WhatsApp
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleCopyMessage(guest, t)}>
-                    <Copy className="h-4 w-4 mr-2" />Copiar mensagem
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            ))
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
-
-  const GuestCard = ({ guest }: { guest: Guest }) => (
-    <div className="card-elegant p-4 space-y-3">
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-medium text-foreground truncate">{guest.name}</h3>
-            <MessageIndicators guestId={guest.id} />
-          </div>
-          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
-            <span className="flex items-center gap-1"><Users className="h-3 w-3" />{guest.max_adults || 0}</span>
-            <span className="flex items-center gap-1"><Baby className="h-3 w-3" />{guest.max_children || 0}</span>
-            {guest.group_name && (<span className="flex items-center gap-1"><FolderOpen className="h-3 w-3" />{guest.group_name}</span>)}
-            {guest.whatsapp && (
-              <a href={`https://wa.me/${guest.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-green-600 hover:underline">
-                <Phone className="h-3 w-3" />{guest.whatsapp}
-              </a>
+  const ActionButtons = ({ guest }: { guest: Guest }) => (
+    <div className="flex items-center justify-end gap-1">
+      {guest.qr_code ? (
+        <a
+          href={`/ingresso/${guest.qr_code}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Ver QR Code / ingresso"
+          className="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-[#9a8478] hover:bg-[#f4e7e0] hover:text-[#7a1b2a] transition-colors"
+        >
+          <QrCode className="w-[15px] h-[15px]" strokeWidth={1.8} />
+        </a>
+      ) : (
+        <span className="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-[#d8ccbe]" title="Sem ingresso">
+          <QrCode className="w-[15px] h-[15px]" strokeWidth={1.8} />
+        </span>
+      )}
+      <button
+        onClick={() => onEdit?.(guest)}
+        title="Editar convidado"
+        className="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-[#9a8478] hover:bg-[#f4e7e0] hover:text-[#7a1b2a] transition-colors"
+      >
+        <Pencil className="w-[15px] h-[15px]" strokeWidth={1.8} />
+      </button>
+      {waTemplates.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              title="Enviar mensagem no WhatsApp"
+              className="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-[#2f8f63] hover:bg-[#e6f1ea] transition-colors"
+            >
+              <MessageSquare className="w-[15px] h-[15px]" strokeWidth={1.8} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-60">
+            <DropdownMenuLabel className="font-normal">
+              <span className="text-[10.5px] font-bold tracking-wide uppercase text-[#b3a194]">Enviar para</span>
+              <p className="text-sm font-semibold text-[#3a0a10] truncate">{guest.name}</p>
+              <p className="text-xs text-[#9a8478]">{guest.whatsapp || "Sem WhatsApp"}</p>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {!guest.whatsapp ? (
+              <DropdownMenuItem disabled><Phone className="h-4 w-4 mr-2" />Sem WhatsApp cadastrado</DropdownMenuItem>
+            ) : (
+              waTemplates.map((t) => (
+                <DropdownMenuSub key={t.id}>
+                  <DropdownMenuSubTrigger>
+                    <MessageSquare className="h-4 w-4 mr-2 text-[#2f8f63]" />{t.title}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => handleOpenWhatsApp(guest, t)}>
+                      <ExternalLink className="h-4 w-4 mr-2" />Abrir no WhatsApp
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleCopyMessage(guest, t)}>
+                      <Copy className="h-4 w-4 mr-2" />Copiar mensagem
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              ))
             )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {getStatusBadge(guest)}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit?.(guest)}><Pencil className="h-4 w-4 mr-2" />Editar</DropdownMenuItem>
-              {waTemplates.length > 0 && guest.whatsapp && (
-                <>
-                  <DropdownMenuSeparator />
-                  {waTemplates.map((t) => (
-                    <DropdownMenuSub key={t.id}>
-                      <DropdownMenuSubTrigger>
-                        <MessageSquare className="h-4 w-4 mr-2 text-green-600" />{t.title}
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        <DropdownMenuItem onClick={() => handleOpenWhatsApp(guest, t)}>
-                          <ExternalLink className="h-4 w-4 mr-2" />Abrir no WhatsApp
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleCopyMessage(guest, t)}>
-                          <Copy className="h-4 w-4 mr-2" />Copiar mensagem
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  ))}
-                </>
-              )}
-              {waTemplates.length > 0 && !guest.whatsapp && (
-                <DropdownMenuItem disabled><Phone className="h-4 w-4 mr-2" />Sem WhatsApp</DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setResetId(guest.id)} disabled={guest.status === "pending" && !guest.checkin_done}><RotateCcw className="h-4 w-4 mr-2" />Redefinir</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleResendWebhook(guest)}><Send className="h-4 w-4 mr-2" />Reenviar Webhook</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setDeleteId(guest.id)} className="text-destructive focus:text-destructive"><Trash2 className="h-4 w-4 mr-2" />Excluir</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-      <div className="flex items-center justify-between text-sm">
-        <div className="flex items-center gap-4">
-          <span className="text-muted-foreground">Confirmados: <span className="text-foreground font-medium">{(guest.confirmed_adults || 0) + (guest.confirmed_children || 0)}</span></span>
-          {guest.checkin_done && (<span className="text-success text-xs">Check-in: {formatCheckinTime(guest.checkin_at)}</span>)}
-        </div>
-        {guest.observations && (
-          <Tooltip><TooltipTrigger><MessageSquare className="h-4 w-4 text-muted-foreground" /></TooltipTrigger><TooltipContent className="max-w-xs"><p className="text-sm">{guest.observations}</p></TooltipContent></Tooltip>
-        )}
-      </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+      <button
+        onClick={() => setResetId(guest.id)}
+        disabled={guest.status === "pending" && !guest.checkin_done}
+        title="Redefinir confirmação"
+        className="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-[#9a8478] hover:bg-[#f6ecda] hover:text-[#b07d22] transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#9a8478]"
+      >
+        <RotateCcw className="w-[15px] h-[15px]" strokeWidth={1.8} />
+      </button>
+      <button
+        onClick={() => setDeleteId(guest.id)}
+        title="Remover convidado"
+        className="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-[#9a8478] hover:bg-[#f7e7e7] hover:text-[#c0392b] transition-colors"
+      >
+        <Trash2 className="w-[15px] h-[15px]" strokeWidth={1.8} />
+      </button>
     </div>
   );
 
+  const peopleLabel = (guest: Guest) => `${guest.max_adults || 0}A · ${guest.max_children || 0}C`;
+
   return (
     <>
-      {/* Search + Group Filter + Message Filter */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 rounded-lg" />
+      {/* filters */}
+      <div className="flex items-center gap-[10px] mb-4 flex-wrap">
+        <div className="flex items-center gap-[9px] bg-white border border-[#e6dccf] rounded-[11px] px-[14px] py-[9px] flex-1 min-w-[220px] focus-within:border-[#7a1b2a] transition-colors">
+          <Search className="w-4 h-4 text-[#9a8478]" strokeWidth={1.9} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar convidado…"
+            className="flex-1 border-none outline-none bg-transparent text-[13.5px] text-[#3a0a10] placeholder:text-[#9a8478]"
+          />
         </div>
+
         {groups.length > 0 && (
-          <Select value={groupFilter} onValueChange={setGroupFilter}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Grupo/Família" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos os grupos</SelectItem>
-              <SelectItem value="__none__">(Sem grupo)</SelectItem>
-              {groups.map(g => (<SelectItem key={g} value={g}>{g}</SelectItem>))}
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 bg-white border border-[#e6dccf] rounded-[11px] px-[14px] py-[9px] text-[#5e3b32] hover:bg-[#fbf7f1] transition-colors">
+                <FolderOpen className="w-[15px] h-[15px] text-[#b3a194]" strokeWidth={1.9} />
+                <span className="text-[13.5px] font-medium">{groupLabel}</span>
+                <ChevronDown className="w-[14px] h-[14px] text-[#b3a194]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem onClick={() => setGroupFilter("__all__")}>Todos os grupos</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setGroupFilter("__none__")}>(Sem grupo)</DropdownMenuItem>
+              {groups.map(g => (
+                <DropdownMenuItem key={g} onClick={() => setGroupFilter(g)}>{g}</DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Todos os status</SelectItem>
-            <SelectItem value="pending">Pendentes</SelectItem>
-            <SelectItem value="confirmed">Confirmados</SelectItem>
-            <SelectItem value="declined">Recusados</SelectItem>
-            <SelectItem value="checkedin">Check-in realizado</SelectItem>
-          </SelectContent>
-        </Select>
-        {waTemplates.length > 0 && (
-          <Select value={messageFilter} onValueChange={setMessageFilter}>
-            <SelectTrigger className="w-full sm:w-[220px]">
-              <MessageSquare className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Filtro mensagens" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todas as mensagens</SelectItem>
-              <SelectItem value="__none__">Sem mensagem enviada</SelectItem>
-              <SelectItem value="confirmation">Com confirmação enviada</SelectItem>
-              <SelectItem value="reminder">Com lembrete enviado</SelectItem>
-              <SelectItem value="extra">Com extra enviado</SelectItem>
-              <SelectItem value="no_confirmation">Sem confirmação</SelectItem>
-              <SelectItem value="no_reminder">Sem lembrete</SelectItem>
-              <SelectItem value="no_extra">Sem extra</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-2 bg-white border border-[#e6dccf] rounded-[11px] px-[14px] py-[9px] text-[#5e3b32] hover:bg-[#fbf7f1] transition-colors">
+              <Clock className="w-[15px] h-[15px] text-[#b3a194]" strokeWidth={1.9} />
+              <span className="text-[13.5px] font-medium">{statusLabels[statusFilter]}</span>
+              <ChevronDown className="w-[14px] h-[14px] text-[#b3a194]" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuItem onClick={() => setStatusFilter("__all__")}>Todos os status</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter("pending")}>Pendentes</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter("confirmed")}>Confirmados</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter("checkedin")}>Check-in</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter("declined")}>Recusados</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* Group Stats Summary */}
-      {groups.length > 0 && groupFilter !== "__all__" && (
-        <div className="mb-6">
-          {groupStats.filter(gs => groupFilter === "__all__" || gs.name === groupFilter || (groupFilter === "__none__" && gs.name === "(Sem grupo)")).map(gs => (
-            <div key={gs.name} className="card-elegant p-4 flex flex-wrap gap-4 items-center text-sm">
-              <span className="font-medium text-foreground">{gs.name}</span>
-              <Badge variant="secondary">{gs.total} convidados</Badge>
-              <Badge className="bg-success/20 text-success border-0">{gs.confirmed} confirmados</Badge>
-              <Badge variant="secondary">{gs.pending} pendentes</Badge>
-              <Badge variant="outline">{gs.expectedPeople} pessoas esperadas</Badge>
-              {gs.checkedIn > 0 && <Badge className="bg-blue-100 text-blue-700 border-0">{gs.checkedIn} check-ins</Badge>}
+      {/* table */}
+      <div className="bg-white border border-[#ece2d5] rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <div className="min-w-[680px]">
+            {/* header */}
+            <div className="grid grid-cols-[2.1fr_1.2fr_1.2fr_0.9fr_1.3fr_1.2fr] gap-3 px-[22px] py-[13px] bg-[#faf6f0] border-b border-[#efe6db] text-[11.5px] font-semibold tracking-[0.6px] uppercase text-[#b3a194]">
+              <span>Convidado</span>
+              <span>Grupo</span>
+              <span className="text-center">Status</span>
+              <span className="text-center">Pessoas</span>
+              <span>WhatsApp</span>
+              <span className="text-right">Ações</span>
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* Mobile Cards */}
-      <div className="lg:hidden space-y-3">
-        {filteredGuests.length === 0 ? (
-          <div className="card-elegant p-8 text-center text-muted-foreground">
-            {search || groupFilter !== "__all__" || statusFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
-          </div>
-        ) : (
-          filteredGuests.map((guest) => (<GuestCard key={guest.id} guest={guest} />))
-        )}
-      </div>
-
-      {/* Desktop Table */}
-      <div className="hidden lg:block card-elegant overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30">
-              <TableHead className="w-8"></TableHead>
-              <TableHead>Nome</TableHead>
-              {groups.length > 0 && <TableHead>Grupo</TableHead>}
-              <TableHead className="text-center">Status</TableHead>
-              <TableHead className="text-center">Pessoas</TableHead>
-              <TableHead>WhatsApp</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredGuests.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={groups.length > 0 ? 7 : 6} className="text-center py-8 text-muted-foreground">
-                  {search || groupFilter !== "__all__" || statusFilter !== "__all__" || messageFilter !== "__all__" ? "Nenhum convidado encontrado" : "Nenhum convidado cadastrado"}
-                </TableCell>
-              </TableRow>
+            {pageGuests.length === 0 ? (
+              <div className="flex items-center justify-center gap-[9px] px-[22px] py-[34px] text-[#9a8478]">
+                <Search className="w-[18px] h-[18px] text-[#b3a194]" strokeWidth={1.9} />
+                <span className="text-[13.5px]">Nenhum convidado encontrado para esses filtros.</span>
+              </div>
             ) : (
-              filteredGuests.map((guest) => {
-                const isExpanded = expandedRows.has(guest.id);
-                const colSpan = groups.length > 0 ? 7 : 6;
+              pageGuests.map((guest) => {
+                const av = avatarFor(guest.name);
+                const st = statusMeta(guest);
                 return (
-                  <Fragment key={guest.id}>
-                    <TableRow>
-                      <TableCell className="p-2">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(guest.id)}>
-                          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        </Button>
-                      </TableCell>
-                      <TableCell className="font-medium">{guest.name}</TableCell>
-                      {groups.length > 0 && (<TableCell className="text-muted-foreground text-sm">{guest.group_name || "-"}</TableCell>)}
-                      <TableCell className="text-center">{getStatusBadge(guest)}</TableCell>
-                      <TableCell className="text-center text-sm whitespace-nowrap">
-                        {(guest.max_adults || 0)}A / {(guest.max_children || 0)}C
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {guest.whatsapp ? (
-                          <a href={`https://wa.me/${guest.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline whitespace-nowrap">
-                            {guest.whatsapp}
-                          </a>
-                        ) : (<span className="text-muted-foreground">-</span>)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit?.(guest)}><Pencil className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Editar</TooltipContent></Tooltip>
-                          <WhatsAppMenu guest={guest} />
-                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setResetId(guest.id)} disabled={guest.status === "pending" && !guest.checkin_done}><RotateCcw className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Restaurar</TooltipContent></Tooltip>
-                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary" onClick={() => handleResendWebhook(guest)} disabled={sendingWebhook === guest.id}><Send className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Reenviar Webhook</TooltipContent></Tooltip>
-                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(guest.id)}><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Excluir</TooltipContent></Tooltip>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    {isExpanded && (
-                      <TableRow key={`${guest.id}-details`} className="bg-muted/20 hover:bg-muted/20">
-                        <TableCell colSpan={colSpan} className="py-3">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm px-2">
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Confirmados</p>
-                              <p className="font-medium">{(guest.confirmed_adults || 0) + (guest.confirmed_children || 0)} pessoas</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Mensagens</p>
-                              <div className="min-h-5"><MessageIndicators guestId={guest.id} /></div>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Check-in</p>
-                              <p className={guest.checkin_done ? "text-success font-medium" : "text-muted-foreground"}>
-                                {guest.checkin_done ? formatCheckinTime(guest.checkin_at) : "—"}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Observações</p>
-                              <p className="text-foreground">{guest.observations || "—"}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </Fragment>
+                  <div
+                    key={guest.id}
+                    className="grid grid-cols-[2.1fr_1.2fr_1.2fr_0.9fr_1.3fr_1.2fr] gap-3 px-[22px] py-[14px] items-center border-b border-[#f3ece2] hover:bg-[#fdfaf6] transition-colors"
+                  >
+                    <div className="flex items-center gap-[11px] min-w-0">
+                      <div
+                        className="w-[34px] h-[34px] rounded-full flex-none flex items-center justify-center text-[12.5px] font-semibold"
+                        style={{ background: av.bg, color: av.color }}
+                      >
+                        {getInitials(guest.name)}
+                      </div>
+                      <span className="text-sm font-semibold text-[#3a0a10] truncate">{guest.name}</span>
+                    </div>
+                    <span className="text-[13px] text-[#9a8478] truncate">{guest.group_name || "—"}</span>
+                    <div className="flex justify-center">
+                      <span
+                        className="inline-flex items-center gap-[5px] text-xs font-semibold px-[11px] py-1 rounded-full whitespace-nowrap"
+                        style={{ color: st.color, background: st.bg }}
+                      >
+                        <span className="w-[6px] h-[6px] rounded-full" style={{ background: st.color }} />
+                        {st.label}
+                      </span>
+                    </div>
+                    <span className="text-[13px] text-[#5e3b32] text-center whitespace-nowrap">{peopleLabel(guest)}</span>
+                    <span className="text-[13px] text-[#9a8478] truncate">{guest.whatsapp || "—"}</span>
+                    <ActionButtons guest={guest} />
+                  </div>
                 );
               })
             )}
-          </TableBody>
-        </Table>
+
+            {/* pagination */}
+            <div className="flex items-center justify-between px-[22px] py-[13px] text-[12.5px] text-[#9a8478]">
+              <span>
+                {filteredGuests.length} {filteredGuests.length === 1 ? "convidado" : "convidados"}
+              </span>
+              <div className="flex items-center gap-[6px]">
+                <button
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={currentPage === 0}
+                  className="w-[30px] h-[30px] rounded-lg border border-[#e6dccf] bg-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-[#5e3b32] hover:bg-[#fbf7f1] transition-colors"
+                >
+                  <ChevronLeft className="w-[14px] h-[14px]" />
+                </button>
+                <span className="px-1">{currentPage + 1} / {totalPages}</span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={currentPage >= totalPages - 1}
+                  className="w-[30px] h-[30px] rounded-lg border border-[#e6dccf] bg-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-[#5e3b32] hover:bg-[#fbf7f1] transition-colors"
+                >
+                  <ChevronRight className="w-[14px] h-[14px]" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Reset Confirmation Dialog */}
