@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -10,7 +10,7 @@ import {
   DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
-  Search, Pencil, Trash2, RotateCcw, QrCode, FolderOpen, Clock, Check, ChevronLeft, ChevronRight, ChevronDown,
+  Search, Pencil, Trash2, RotateCcw, QrCode, FolderOpen, Clock, ChevronLeft, ChevronRight, ChevronDown,
   MessageSquare, ExternalLink, Copy, Phone,
 } from "lucide-react";
 import type { Guest } from "./EventManagement";
