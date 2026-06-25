@@ -224,10 +224,8 @@ const EventManagement = ({ eventId, userId }: EventManagementProps) => {
     URL.revokeObjectURL(url);
   };
 
-  const handleExportAll = () => {
-    exportToCSV(guests, `${event.name.replace(/\s+/g, "_")}_todos_convidados.csv`);
-    toast({ title: "CSV exportado", description: `${guests.length} convidados exportados.` });
-  };
+
+
 
   const handleExportConfirmed = () => {
     const confirmed = guests.filter(g => g.status === "confirmed");
